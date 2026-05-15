@@ -11,94 +11,49 @@ import type {
 
 const DEFAULT_PLACEHOLDER = "type anything...";
 
-const COMPONENT_STYLE = `
-    :host {
-      display: inline-block;
-      font: inherit;
-      color: inherit;
-      box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 4px 8px rgb(0 0 0 / .1);
-      border-radius: 20px;
-      padding: 5px;
-      background: #eeeeee7d;
-    }
-    .field {
-      position: relative;
-      display: block;
-      font-size: 1rem;
-      background: #ffffff;
-      border: 1px solid #e4e4e7;
-      border-radius: 0.9rem;
-      padding: 1rem;
-    }
+// Always injected — structural CSS required for the ghost overlay to work
+const FUNCTIONAL_STYLE = `
+    :host { display: inline-block; font: inherit; color: inherit; }
+    .field { position: relative; display: block; }
     .input {
-      font: inherit;
-      color: inherit;
-      background: transparent;
-      border: 0;
-      outline: 0;
-      padding: 0;
-      margin: 0;
-      width: 100%;
-      min-width: 20ch;
-      box-sizing: border-box;
+      font: inherit; color: inherit; background: transparent;
+      border: 0; outline: 0; padding: 0; margin: 0;
+      width: 100%; min-width: 20ch; box-sizing: border-box;
     }
     .ghost {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      padding: 1rem;
-      justify-content: space-between;
-      gap: 1rem;
-      pointer-events: none;
-      font: inherit;
-      white-space: pre;
-      overflow: hidden;
+      position: absolute; inset: 0; display: flex; align-items: center;
+      gap: 1rem; pointer-events: none; font: inherit;
+      white-space: pre; overflow: hidden;
     }
-    .ghost-completion {
-      min-width: 0;
-      overflow: hidden;
-      white-space: pre;
+    .ghost-completion { min-width: 0; overflow: hidden; white-space: pre; }
+    .ghost-typed { color: transparent; }
+    .ghost-hint[hidden] { display: none; }
+    ::slotted([slot="ambiguity"][hidden]) { display: none; }
+    .examples-text[hidden] { display: none; }
+`;
+
+// Injected only when no-style is NOT set — all visual/decorative CSS
+const DECORATIVE_STYLE = `
+    :host {
+      box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 4px 8px rgb(0 0 0 / .1);
+      border-radius: 20px; padding: 5px; background: #eeeeee7d;
     }
-    .ghost-typed {
-      color: transparent;
+    .field {
+      font-size: 1rem; background: #ffffff;
+      border: 1px solid #e4e4e7; border-radius: 0.9rem; padding: 1rem;
     }
-    .ghost-tail {
-      opacity: 0.5;
-    }
+    .ghost { padding: 1rem; justify-content: space-between; }
+    .ghost-tail { opacity: 0.5; }
     .ghost-hint {
-      margin-left: 0.5em;
-      padding: 0.05em 0.35em;
-      border: 1px solid currentColor;
-      border-radius: 3px;
-      font-size: 0.7em;
-      font-family: inherit;
-      opacity: 0.4;
-      vertical-align: middle;
+      margin-left: 0.5em; padding: 0.05em 0.35em;
+      border: 1px solid currentColor; border-radius: 3px;
+      font-size: 0.7em; font-family: inherit; opacity: 0.4; vertical-align: middle;
     }
-    .ghost-hint[hidden] {
-      display: none;
-    }
-    .ghost-resolution {
-      flex: 0 0 auto;
-      opacity: 0.5;
-    }
+    .ghost-resolution { flex: 0 0 auto; opacity: 0.5; }
     ::slotted([slot="ambiguity"]) {
-      margin-top: 0.5rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
+      margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem;
     }
-    ::slotted([slot="ambiguity"][hidden]) {
-      display: none;
-    }
-    p {
-      line-height: 1.7;
-      padding: 0 10px 5px;
-      margin-bottom: 0;
-      font-size: 14px;
-      font-style: italic;
-    }
+    p { line-height: 1.7; padding: 0 10px 5px; margin-bottom: 0; font-size: 14px; font-style: italic; }
 `;
 
 const TEMPLATE = document.createElement("template");
@@ -131,6 +86,7 @@ export class HotDateElement extends HTMLElement {
       "end-date",
       "hide-examples",
       "hide-hint",
+      "display-value",
     ];
   }
 
@@ -225,6 +181,11 @@ export class HotDateElement extends HTMLElement {
 
     if (name === "hide-hint") {
       this.updateHintVisibility();
+      return;
+    }
+
+    if (name === "display-value") {
+      this.renderGhost();
       return;
     }
 
@@ -426,13 +387,24 @@ export class HotDateElement extends HTMLElement {
 
   private updateStyles(): void {
     if (!this.shadowRoot) return;
-    const existing = this.shadowRoot.querySelector("style");
+
+    // Functional style: always present (needed for ghost overlay positioning)
+    if (!this.shadowRoot.querySelector("style.functional")) {
+      const s = document.createElement("style");
+      s.className = "functional";
+      s.textContent = FUNCTIONAL_STYLE;
+      this.shadowRoot.prepend(s);
+    }
+
+    // Decorative style: only when no-style attribute is absent
+    const existing = this.shadowRoot.querySelector("style.decorative");
     if (this.hasAttribute("no-style")) {
       existing?.remove();
     } else if (!existing) {
-      const style = document.createElement("style");
-      style.textContent = COMPONENT_STYLE;
-      this.shadowRoot.prepend(style);
+      const s = document.createElement("style");
+      s.className = "decorative";
+      s.textContent = DECORATIVE_STYLE;
+      this.shadowRoot.querySelector("style.functional")!.after(s);
     }
   }
 
@@ -526,9 +498,15 @@ export class HotDateElement extends HTMLElement {
     this.ghostTypedElement.textContent = this.rawInputValue;
     const tail = this.computeCompletionTail();
     this.ghostTailElement.textContent = tail;
-    this.ghostHintElement.hidden = tail.length === 0;
-    this.ghostResolutionElement.textContent =
-      this.parseState.status === "valid" ? (this.parseState.previewLabel ?? "") : "";
+    this.ghostHintElement.hidden = tail.length === 0 || this.hasAttribute("hide-hint");
+
+    if (this.parseState.status === "valid") {
+      this.ghostResolutionElement.textContent = this.parseState.previewLabel ?? "";
+    } else if (!this.rawInputValue) {
+      this.ghostResolutionElement.textContent = this.getAttribute("display-value") ?? "";
+    } else {
+      this.ghostResolutionElement.textContent = "";
+    }
   }
 
   private computeCompletionTail(): string {

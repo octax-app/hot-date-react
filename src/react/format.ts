@@ -16,6 +16,27 @@ function formatSingleDate(isoDate: string, format: string): string {
   });
 }
 
+const displayFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+function formatDisplayDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  // Use UTC to avoid timezone shifting the date
+  return displayFormatter.format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+export function formatDisplayValue(canonical: string | null): string {
+  if (!canonical) return "";
+  if (canonical.includes("/")) {
+    const [start, end] = canonical.split("/");
+    return `${formatDisplayDate(start)} — ${formatDisplayDate(end)}`;
+  }
+  return formatDisplayDate(canonical);
+}
+
 export function applyFormat(
   canonical: string | null,
   format?: string,

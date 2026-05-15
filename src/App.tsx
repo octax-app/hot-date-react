@@ -77,33 +77,36 @@ export default function App() {
         <ValueDisplay label="onChange value" value={bounded} />
       </Section>
 
-      <Section title="5 — No style + custom className (examples & hint hidden by default)">
+      <Section title="5 — No style + custom className (examples hidden by default)">
         <style>{`
           .my-picker {
             display: inline-block;
+            min-width: 260px;
+          }
+          .my-picker::part(field) {
             border: 2px solid #6366f1;
             border-radius: 8px;
             padding: 0.5rem 0.75rem;
-            font-family: monospace;
-            min-width: 260px;
             background: #fafafa;
+            font-family: monospace;
           }
-          .my-picker input {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: inherit;
+          .my-picker::part(input) {
+            font-family: monospace;
+            font-size: 0.9rem;
+          }
+          .my-picker::part(ghost) {
+            padding: 0.5rem 0.75rem;
+            justify-content: space-between;
           }
         `}</style>
         <HotDate
           dateType="point"
           noStyle
           className="my-picker"
-          placeholder="unstyled, custom class"
+          placeholder="custom styled via ::part()"
         />
         <p style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.4rem" }}>
-          Shadow DOM styles removed. <code>showExamples</code> and <code>showHint</code> default to <code>false</code> when <code>noStyle</code> is set.
+          Decorative styles removed. Structural CSS kept. Use <code>::part(field)</code>, <code>::part(input)</code>, <code>::part(ghost)</code> to style.
         </p>
       </Section>
 

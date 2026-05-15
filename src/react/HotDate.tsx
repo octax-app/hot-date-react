@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import "../hot-date";
-import { applyFormat } from "./format";
+import { applyFormat, formatDisplayValue } from "./format";
 
 export interface HotDateProps {
   value?: string | null;
@@ -41,6 +41,7 @@ declare module "react" {
         "end-date"?: string;
         "hide-examples"?: string;
         "hide-hint"?: string;
+        "display-value"?: string;
         mode?: string;
         disabled?: boolean;
         required?: boolean;
@@ -52,7 +53,6 @@ declare module "react" {
 
 type HotDateEl = HTMLElement & {
   value: string | null;
-  rawInput: string;
 };
 
 export function HotDate({
@@ -116,8 +116,12 @@ export function HotDate({
     const el = ref.current;
     if (!el || value === undefined) return;
     el.value = value ?? null;
-    // Also update the visible text input so the date shows
-    el.rawInput = value ?? "";
+    // Show the formatted value on the right side of the input (ghost resolution)
+    if (value) {
+      el.setAttribute("display-value", formatDisplayValue(value));
+    } else {
+      el.removeAttribute("display-value");
+    }
   }, [value]);
 
   useEffect(() => {
