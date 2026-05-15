@@ -1,5 +1,9 @@
 # hot-date-react
 
+> **Honest disclaimer:** This package was not crafted by a talented engineer burning the midnight oil. It was conjured entirely by [Claude Code](https://claude.com/claude-code) while its human operator (hi 👋) sat back and occasionally typed "yes" and "looks good." No developers were harmed — or involved — in the making of this wrapper.
+>
+> All the real magic lives in [**@stolinski/hot-date**](https://github.com/stolinski/hot-date) by [Scott Tolinski](https://github.com/stolinski). This package is just React clothing on top of his excellent web component. Credit where it's due: Scott built the thing, Claude dressed it up, and the human just filed a work order.
+
 React wrapper for [**@stolinski/hot-date**](https://github.com/stolinski/hot-date) — a natural language date input web component. Type anything: "next friday", "tomorrow to after tomorrow", "between jan 1 and feb 28", and get a clean ISO date back.
 
 ## Install

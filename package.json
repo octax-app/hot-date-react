@@ -1,6 +1,6 @@
 {
   "name": "hot-date-react",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "React wrapper for the hot-date natural language date input web component.",
   "type": "module",
   "main": "./dist/hot-date.js",
