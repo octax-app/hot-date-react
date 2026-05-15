@@ -87,12 +87,18 @@ export class HotDateElement extends HTMLElement {
       "hide-examples",
       "hide-hint",
       "display-value",
+      "part-class-field",
+      "part-class-input",
+      "part-class-ghost",
+      "part-class-hint",
     ];
   }
 
   private readonly parser = new JsParserEngine();
   private readonly internals: ElementInternals | null;
+  private readonly fieldElement: HTMLDivElement;
   private readonly inputElement: HTMLInputElement;
+  private readonly ghostElement: HTMLDivElement;
   private readonly ghostTypedElement: HTMLSpanElement;
   private readonly ghostTailElement: HTMLSpanElement;
   private readonly ghostHintElement: HTMLElement;
@@ -115,7 +121,11 @@ export class HotDateElement extends HTMLElement {
       throw new Error("Unable to create shadow root.");
     }
 
+    this.fieldElement =
+      root.querySelector<HTMLDivElement>(".field") ?? document.createElement("div");
     this.inputElement = root.querySelector("input") ?? document.createElement("input");
+    this.ghostElement =
+      root.querySelector<HTMLDivElement>(".ghost") ?? document.createElement("div");
     this.ghostTypedElement =
       root.querySelector<HTMLSpanElement>(".ghost-typed") ?? document.createElement("span");
     this.ghostTailElement =
@@ -186,6 +196,26 @@ export class HotDateElement extends HTMLElement {
 
     if (name === "display-value") {
       this.renderGhost();
+      return;
+    }
+
+    if (name === "part-class-field") {
+      this.applyPartClass(this.fieldElement, oldValue, newValue);
+      return;
+    }
+
+    if (name === "part-class-input") {
+      this.applyPartClass(this.inputElement, oldValue, newValue);
+      return;
+    }
+
+    if (name === "part-class-ghost") {
+      this.applyPartClass(this.ghostElement, oldValue, newValue);
+      return;
+    }
+
+    if (name === "part-class-hint") {
+      this.applyPartClass(this.ghostHintElement, oldValue, newValue);
       return;
     }
 
@@ -383,6 +413,19 @@ export class HotDateElement extends HTMLElement {
     }
 
     this.parseAndRender();
+  }
+
+  private applyPartClass(
+    element: Element,
+    oldValue: string | null,
+    newValue: string | null,
+  ): void {
+    if (oldValue) {
+      oldValue.split(/\s+/).filter(Boolean).forEach((c) => element.classList.remove(c));
+    }
+    if (newValue) {
+      newValue.split(/\s+/).filter(Boolean).forEach((c) => element.classList.add(c));
+    }
   }
 
   private updateStyles(): void {

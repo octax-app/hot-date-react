@@ -110,6 +110,44 @@ Dates outside the `startDate`/`endDate` window are rejected at the parser level.
 
 > When `noStyle` is set, decorative shadow DOM styles are removed but structural CSS (positioning for the ghost overlay) is preserved. `showExamples` defaults to `false`.
 
+### Per-part class names
+
+Use `classNames` to apply classes directly to shadow DOM elements. Each key accepts a **string** or a **function** that receives the current component state:
+
+```tsx
+<HotDate
+  noStyle
+  classNames={{
+    field: "my-field",
+    input: (active, disabled, focused) =>
+      `my-input ${focused ? "focused" : ""} ${active ? "has-value" : ""}`,
+    ghost: "my-ghost",
+    hint: "my-hint",
+  }}
+/>
+```
+
+The function signature for any entry is:
+
+```ts
+(active: boolean, disabled: boolean, focused: boolean) => string
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `active` | `true` when the input has a resolved valid date |
+| `disabled` | `true` when the `disabled` prop is set |
+| `focused` | `true` when the input currently has focus |
+
+The four keys map to the shadow DOM parts:
+
+| Key | Part | Element |
+| --- | --- | --- |
+| `field` | `part="field"` | The field wrapper |
+| `input` | `part="input"` | The `<input>` element |
+| `ghost` | `part="ghost"` | The suggestion overlay |
+| `hint` | `part="hint"` | The `Tab` hint chip |
+
 ### Controlled value
 
 ```tsx
@@ -147,6 +185,7 @@ When a `value` is set, it appears as `"MMM DD, YYYY"` on the right side of the i
 | `name` | `string` | — | Form field name. |
 | `showExamples` | `boolean` | `!noStyle` | Show the examples hint below the input. |
 | `showHint` | `boolean` | `true` | Show the Tab autocomplete hint. |
+| `classNames` | `ClassNamesConfig` | — | Per-part class names. Each value is a `string` or `(active, disabled, focused) => string`. Keys: `field`, `input`, `ghost`, `hint`. |
 
 ## Output Format
 

@@ -1,6 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../hot-date";
 import { applyFormat, formatDisplayValue } from "./format";
+
+export type ClassNameValue =
+  | string
+  | ((active: boolean, disabled: boolean, focused: boolean) => string);
+
+export interface ClassNamesConfig {
+  field?: ClassNameValue;
+  input?: ClassNameValue;
+  ghost?: ClassNameValue;
+  hint?: ClassNameValue;
+}
 
 function toIsoDate(date: Date | string | undefined): string | undefined {
   if (date === undefined) return undefined;
@@ -32,6 +43,7 @@ export interface HotDateProps {
   name?: string;
   showExamples?: boolean;
   showHint?: boolean;
+  classNames?: ClassNamesConfig;
 }
 
 declare module "react" {
@@ -55,6 +67,10 @@ declare module "react" {
         disabled?: boolean;
         required?: boolean;
         value?: string;
+        "part-class-field"?: string;
+        "part-class-input"?: string;
+        "part-class-ghost"?: string;
+        "part-class-hint"?: string;
       };
     }
   }
@@ -85,8 +101,11 @@ export function HotDate({
   name,
   showExamples,
   showHint,
+  classNames,
 }: HotDateProps) {
   const ref = useRef<HotDateEl>(null);
+  const [isActive, setIsActive] = useState<boolean>(!!value);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
 
   // showExamples/showHint default to false when noStyle, true otherwise
   const effectiveShowExamples = showExamples ?? !noStyle;
@@ -125,7 +144,7 @@ export function HotDate({
     const el = ref.current;
     if (!el || value === undefined) return;
     el.value = value ?? null;
-    // Show the formatted value on the right side of the input (ghost resolution)
+    setIsActive(!!value);
     if (value) {
       el.setAttribute("display-value", formatDisplayValue(value));
     } else {
@@ -139,6 +158,7 @@ export function HotDate({
 
     const handleChange = (e: Event) => {
       const detail = (e as CustomEvent<{ value: string | null }>).detail;
+      setIsActive(!!detail.value);
       onChange?.(applyFormat(detail.value, format));
     };
 
@@ -147,18 +167,49 @@ export function HotDate({
       onCommit?.(applyFormat(detail.value, format));
     };
 
-    const handleClear = () => onClear?.();
+    const handleClear = () => {
+      setIsActive(false);
+      onClear?.();
+    };
+
+    const handleFocusIn = () => setIsFocused(true);
+    const handleFocusOut = () => setIsFocused(false);
 
     el.addEventListener("value-change", handleChange);
     el.addEventListener("value-commit", handleCommit);
     el.addEventListener("clear", handleClear);
+    el.addEventListener("focusin", handleFocusIn);
+    el.addEventListener("focusout", handleFocusOut);
 
     return () => {
       el.removeEventListener("value-change", handleChange);
       el.removeEventListener("value-commit", handleCommit);
       el.removeEventListener("clear", handleClear);
+      el.removeEventListener("focusin", handleFocusIn);
+      el.removeEventListener("focusout", handleFocusOut);
     };
   }, [onChange, onCommit, onClear, format]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const resolve = (val: ClassNameValue | undefined): string | null => {
+      if (!val) return null;
+      return typeof val === "function" ? val(isActive, !!disabled, isFocused) : val;
+    };
+
+    const sync = (attr: string, val: ClassNameValue | undefined) => {
+      const resolved = resolve(val);
+      if (resolved) el.setAttribute(attr, resolved);
+      else el.removeAttribute(attr);
+    };
+
+    sync("part-class-field", classNames?.field);
+    sync("part-class-input", classNames?.input);
+    sync("part-class-ghost", classNames?.ghost);
+    sync("part-class-hint", classNames?.hint);
+  }, [classNames, isActive, isFocused, disabled]);
 
   return (
     <hot-date
