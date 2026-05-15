@@ -2,6 +2,15 @@ import { useEffect, useRef } from "react";
 import "../hot-date";
 import { applyFormat, formatDisplayValue } from "./format";
 
+function toIsoDate(date: Date | string | undefined): string | undefined {
+  if (date === undefined) return undefined;
+  if (typeof date === "string") return date;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export interface HotDateProps {
   value?: string | null;
   onChange?: (value: string | [string, string] | null) => void;
@@ -9,8 +18,8 @@ export interface HotDateProps {
   onClear?: () => void;
   format?: string;
   dateType?: "point" | "range";
-  startDate?: string;
-  endDate?: string;
+  startDate?: Date | string;
+  endDate?: Date | string;
   noStyle?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -101,8 +110,8 @@ export function HotDate({
     setVal("timezone", timezone);
     setVal("locale", locale);
     setVal("week-start", weekStart);
-    setVal("start-date", startDate);
-    setVal("end-date", endDate);
+    setVal("start-date", toIsoDate(startDate));
+    setVal("end-date", toIsoDate(endDate));
     setVal("mode", dateType);
     setAttr("no-style", !!noStyle);
     setAttr("disabled", !!disabled);

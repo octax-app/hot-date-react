@@ -63,7 +63,17 @@ For ranges, `onChange` returns `[formattedStart, formattedEnd]`.
 
 ### Date constraints (replaces `allowPast`)
 
+Both `Date` objects and `"YYYY-MM-DD"` strings are accepted. The output value is always a string.
+
 ```tsx
+// Using JS Date objects
+<HotDate
+  startDate={new Date()}
+  endDate={new Date(Date.now() + 30 * 86400000)}
+  onChange={(value) => console.log(value)} // value: "2026-06-13" (string)
+/>
+
+// Using ISO strings
 <HotDate
   startDate="2026-01-01"
   endDate="2026-12-31"
@@ -123,8 +133,8 @@ When a `value` is set, it appears as `"MMM DD, YYYY"` on the right side of the i
 | `onClear` | `() => void` | — | Fires when input is cleared. |
 | `format` | `string` | `"YYYY-MM-DD"` | Output format. Tokens: `YYYY MM DD YY M D` (case-insensitive). |
 | `dateType` | `"point" \| "range"` | `"point"` | Restrict input to single date or range. |
-| `startDate` | `string` | — | Minimum date (`YYYY-MM-DD`). Dates before this are rejected. |
-| `endDate` | `string` | — | Maximum date (`YYYY-MM-DD`). Dates after this are rejected. |
+| `startDate` | `Date \| string` | — | Minimum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. Dates before this are rejected. |
+| `endDate` | `Date \| string` | — | Maximum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. Dates after this are rejected. |
 | `noStyle` | `boolean` | `false` | Remove decorative shadow DOM styles. |
 | `className` | `string` | — | CSS class on the host element. |
 | `style` | `React.CSSProperties` | — | Inline styles on the host element. |
