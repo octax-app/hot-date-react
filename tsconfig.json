@@ -9,6 +9,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "types": ["vitest/globals", "node"]
   },
   "include": ["src", "tests", "bench", "vite.config.ts"]

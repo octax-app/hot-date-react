@@ -5,8 +5,14 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "jsx": "react-jsx"
   },
-  "include": ["src/hot-date.ts", "src/lib/**/*.ts"],
+  "include": [
+    "src/hot-date.ts",
+    "src/lib/**/*.ts",
+    "src/react/**/*.ts",
+    "src/react/**/*.tsx"
+  ],
   "exclude": ["tests", "bench", "scripts"]
 }

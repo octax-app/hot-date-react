@@ -71,15 +71,49 @@ export class JsParserEngine implements ParserEngine {
       { rule: parseFutureDurationPoint, kind: "point" as const },
     ];
 
+    const { startDate, endDate, mode = "any" } = context.productRules;
+
     for (const { rule, kind } of pointRules) {
       const candidate = rule(ruleCtx);
       if (candidate) {
+        if (mode !== "any" && kind !== mode) continue;
+        if (!isCandidateInBounds(candidate, startDate, endDate)) continue;
         return buildValidResult(rawInput, kind, candidate);
       }
     }
 
     const directPoint = parsePointValue(ruleCtx);
     if (directPoint) {
+      if (mode === "range") {
+        return buildResult({
+          rawInput,
+          status: "invalid",
+          astType: null,
+          valueKind: null,
+          candidates: [],
+          ambiguityGroups: [],
+          selectedCandidateId: null,
+          previewLabel: null,
+          canonicalValue: null,
+          errors: ["Please enter a date range."],
+          suggestions: buildSuggestions(rawInput),
+        });
+      }
+      if (!isCandidateInBounds(directPoint, startDate, endDate)) {
+        return buildResult({
+          rawInput,
+          status: "invalid",
+          astType: null,
+          valueKind: null,
+          candidates: [],
+          ambiguityGroups: [],
+          selectedCandidateId: null,
+          previewLabel: null,
+          canonicalValue: null,
+          errors: ["Date is outside the allowed range."],
+          suggestions: buildSuggestions(rawInput),
+        });
+      }
       return buildValidResult(rawInput, "point", directPoint);
     }
 
@@ -155,4 +189,27 @@ function resolveNow(context: ParseContext): Date {
 
 function resolveTimeZone(context: ParseContext): string {
   return context.timezone || "UTC";
+}
+
+function isCandidateInBounds(
+  candidate: CandidateWithSuggestion,
+  startDate?: string,
+  endDate?: string,
+): boolean {
+  if (!startDate && !endDate) return true;
+
+  const dates: string[] = [];
+  if (candidate.isoDate) dates.push(candidate.isoDate);
+  if (candidate.range) {
+    dates.push(candidate.range.startDate);
+    dates.push(candidate.range.endDate);
+  }
+
+  if (!dates.length) return true;
+
+  return dates.every((d) => {
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  });
 }

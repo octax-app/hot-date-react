@@ -11,28 +11,25 @@ import type {
 
 const DEFAULT_PLACEHOLDER = "type anything...";
 
-const TEMPLATE = document.createElement("template");
-TEMPLATE.innerHTML = `
-  <style>
+const COMPONENT_STYLE = `
     :host {
       display: inline-block;
       font: inherit;
       color: inherit;
-			box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 4px 8px rgb(0 0 0 / .1);
-			border-radius: 20px;
-			padding: 5px;
-			background: #eeeeee7d;
-	}
-
-		.field {
-			position: relative;
-			display: block;
-			font-size: 1rem;
-			background: #ffffff;
-			border: 1px solid #e4e4e7;
-			border-radius: 0.9rem;
-			padding: 1rem;
-		}
+      box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 4px 8px rgb(0 0 0 / .1);
+      border-radius: 20px;
+      padding: 5px;
+      background: #eeeeee7d;
+    }
+    .field {
+      position: relative;
+      display: block;
+      font-size: 1rem;
+      background: #ffffff;
+      border: 1px solid #e4e4e7;
+      border-radius: 0.9rem;
+      padding: 1rem;
+    }
     .input {
       font: inherit;
       color: inherit;
@@ -43,14 +40,14 @@ TEMPLATE.innerHTML = `
       margin: 0;
       width: 100%;
       min-width: 20ch;
-			box-sizing: border-box;
+      box-sizing: border-box;
     }
     .ghost {
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
-			padding: 1rem;
+      padding: 1rem;
       justify-content: space-between;
       gap: 1rem;
       pointer-events: none;
@@ -95,19 +92,22 @@ TEMPLATE.innerHTML = `
     ::slotted([slot="ambiguity"][hidden]) {
       display: none;
     }
-		p {
-		line-height: 1.7;
-		padding: 0 10px 5px;
-		margin-bottom: 0;
-		font-size: 14px;
-		font-style: italic;
-	}
-  </style>
+    p {
+      line-height: 1.7;
+      padding: 0 10px 5px;
+      margin-bottom: 0;
+      font-size: 14px;
+      font-style: italic;
+    }
+`;
+
+const TEMPLATE = document.createElement("template");
+TEMPLATE.innerHTML = `
   <div class="field" part="field">
     <input class="input" part="input" type="text" autocomplete="off" spellcheck="false" />
     <div class="ghost" part="ghost" aria-live="polite"><span class="ghost-completion"><span class="ghost-typed" aria-hidden="true"></span><span class="ghost-tail"></span><kbd class="ghost-hint" part="hint" hidden>Tab</kbd></span><span class="ghost-resolution"></span></div>
   </div>
-	<p>Examples: march 14 to 28 · tomorrow · 3/1/86 · 9 days after christmas until new years<br />Hit <kbd class="ghost-hint">Tab</kbd> to autocomplete.</p>
+  <p class="examples-text">Examples: march 14 to 28 · tomorrow · 3/1/86 · 9 days after christmas until new years<br />Hit <kbd class="ghost-hint">Tab</kbd> to autocomplete.</p>
   <slot name="ambiguity"></slot>
 `;
 
@@ -126,6 +126,11 @@ export class HotDateElement extends HTMLElement {
       "name",
       "disabled",
       "required",
+      "no-style",
+      "start-date",
+      "end-date",
+      "hide-examples",
+      "hide-hint",
     ];
   }
 
@@ -176,6 +181,9 @@ export class HotDateElement extends HTMLElement {
     if (this.ambiguityElement.parentNode !== this) {
       this.append(this.ambiguityElement);
     }
+    this.updateStyles();
+    this.updateExamplesVisibility();
+    this.updateHintVisibility();
     this.syncInputPresentation();
     this.parseAndRender();
   }
@@ -202,6 +210,21 @@ export class HotDateElement extends HTMLElement {
 
     if (name === "disabled") {
       this.inputElement.disabled = this.hasAttribute("disabled");
+      return;
+    }
+
+    if (name === "no-style") {
+      this.updateStyles();
+      return;
+    }
+
+    if (name === "hide-examples") {
+      this.updateExamplesVisibility();
+      return;
+    }
+
+    if (name === "hide-hint") {
+      this.updateHintVisibility();
       return;
     }
 
@@ -401,6 +424,29 @@ export class HotDateElement extends HTMLElement {
     this.parseAndRender();
   }
 
+  private updateStyles(): void {
+    if (!this.shadowRoot) return;
+    const existing = this.shadowRoot.querySelector("style");
+    if (this.hasAttribute("no-style")) {
+      existing?.remove();
+    } else if (!existing) {
+      const style = document.createElement("style");
+      style.textContent = COMPONENT_STYLE;
+      this.shadowRoot.prepend(style);
+    }
+  }
+
+  private updateExamplesVisibility(): void {
+    const p = this.shadowRoot?.querySelector<HTMLElement>(".examples-text");
+    if (p) p.hidden = this.hasAttribute("hide-examples");
+  }
+
+  private updateHintVisibility(): void {
+    if (this.hasAttribute("hide-hint")) {
+      this.ghostHintElement.hidden = true;
+    }
+  }
+
   private bindEvents(): void {
     this.inputElement.addEventListener("input", () => {
       this.rawInputValue = this.inputElement.value;
@@ -553,6 +599,9 @@ export class HotDateElement extends HTMLElement {
   }
 
   private buildContext(): ParseContext {
+    const rawMode = this.getAttribute("mode");
+    const mode =
+      rawMode === "point" || rawMode === "range" ? rawMode : ("any" as const);
     return {
       nowIso: new Date().toISOString(),
       timezone:
@@ -563,6 +612,9 @@ export class HotDateElement extends HTMLElement {
         allowPast: this.hasAttribute("allow-past"),
         defaultTime: { hour: 9, minute: 0 },
         timeOnlyPolicy: "today_if_future_else_tomorrow",
+        startDate: this.getAttribute("start-date") ?? undefined,
+        endDate: this.getAttribute("end-date") ?? undefined,
+        mode,
       },
     };
   }

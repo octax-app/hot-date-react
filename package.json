@@ -1,7 +1,7 @@
 {
-  "name": "@stolinski/hot-date",
-  "version": "0.1.2",
-  "description": "A date input web component.",
+  "name": "hot-date-react",
+  "version": "1.0.0",
+  "description": "React wrapper for the hot-date natural language date input web component.",
   "type": "module",
   "main": "./dist/hot-date.js",
   "module": "./dist/hot-date.js",
@@ -10,19 +10,25 @@
     ".": {
       "types": "./dist/hot-date.d.ts",
       "import": "./dist/hot-date.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/hot-date-react.js"
     }
   },
   "files": [
     "dist"
   ],
   "sideEffects": [
-    "./dist/hot-date.js"
+    "./dist/hot-date.js",
+    "./dist/hot-date-react.js"
   ],
   "keywords": [
     "date-picker",
     "date-input",
     "web-component",
-    "custom-element"
+    "custom-element",
+    "react"
   ],
   "author": "Scott Tolinski",
   "license": "MIT",
@@ -30,8 +36,13 @@
     "type": "git",
     "url": "git+https://github.com/stolinski/hot-date.git"
   },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "scripts": {
     "dev": "vite",
@@ -42,12 +53,17 @@
     "bench": "node --import tsx bench/parser.bench.ts",
     "coverage:variations": "node --import tsx scripts/variation-coverage.ts",
     "coverage:variations:strict": "node --import tsx scripts/variation-coverage.ts --strict",
-    "prepublishOnly": "pnpm test && pnpm build"
+    "prepublishOnly": "npm test && npm run build"
   },
   "devDependencies": {
     "@js-temporal/polyfill": "^0.4.4",
     "@types/node": "^22.10.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "tinybench": "^2.9.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",

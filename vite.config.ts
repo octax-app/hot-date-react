@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     environment: "jsdom",
     include: ["tests/**/*.test.ts"],
@@ -8,12 +10,16 @@ export default defineConfig({
   build: {
     target: "es2022",
     lib: {
-      entry: "src/hot-date.ts",
+      entry: {
+        "hot-date": "src/hot-date.ts",
+        "hot-date-react": "src/react/index.ts",
+      },
       formats: ["es"],
-      fileName: () => "hot-date.js",
+      fileName: (_, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      output: { inlineDynamicImports: true },
+      external: ["react", "react/jsx-runtime", "react-dom"],
+      output: { inlineDynamicImports: false },
     },
     emptyOutDir: true,
   },

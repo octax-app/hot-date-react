@@ -11,6 +11,9 @@ export interface ParseContext {
     allowPast: boolean;
     defaultTime?: { hour: number; minute: number };
     timeOnlyPolicy: "today_if_future_else_tomorrow" | "always_require_date";
+    startDate?: string;
+    endDate?: string;
+    mode?: "point" | "range" | "any";
   };
 }
 
