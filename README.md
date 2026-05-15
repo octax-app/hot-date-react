@@ -6,6 +6,8 @@
 
 React wrapper for [**@stolinski/hot-date**](https://github.com/stolinski/hot-date) — a natural language date input web component. Type anything: "next friday", "tomorrow to after tomorrow", "between jan 1 and feb 28", and get a clean ISO date back.
 
+**[Live demo →](https://packages.octax.cloud/hot-date-react)**
+
 ## Install
 
 ```bash
