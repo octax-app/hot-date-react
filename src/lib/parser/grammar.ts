@@ -175,14 +175,19 @@ function isWeekdayAnchor(normalized: string): boolean {
 
 export function parseExplicitRange(ctx: RuleContext): CandidateWithSuggestion | null {
   const { normalizedInput, now, timeZone, factory } = ctx;
+
+  // Rewrite "between X and Y" → "X to Y" before delimiter matching
+  const betweenInput = normalizedInput.replace(/^between\s+(.+?)\s+and\s+(.+)$/, "$1 to $2");
+  const effectiveInput = betweenInput !== normalizedInput ? betweenInput : normalizedInput;
+
   const delimiters = [" to ", " through ", " until ", " - "];
 
   for (const delimiter of delimiters) {
-    if (!normalizedInput.includes(delimiter)) {
+    if (!effectiveInput.includes(delimiter)) {
       continue;
     }
 
-    const [leftRaw, rightRaw] = normalizedInput.split(delimiter, 2);
+    const [leftRaw, rightRaw] = effectiveInput.split(delimiter, 2);
 
     if (!leftRaw || !rightRaw) {
       continue;

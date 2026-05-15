@@ -34,6 +34,7 @@ export function parseAnchor(normalizedInput: string, now: Date, timeZone: string
     today: 0,
     tomorrow: 1,
     yesterday: -1,
+    "after tomorrow": 2,
     "day after tomorrow": 2,
     "the day after tomorrow": 2,
     "day before yesterday": -2,
