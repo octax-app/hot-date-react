@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import "../hot-date";
+import { HotDateElement } from "../hot-date";
 import { applyFormat, formatDisplayValue, parseFormatToIso } from "./format";
+
+if (typeof customElements !== "undefined") {
+  customElements.get("hot-date") || customElements.define("hot-date", HotDateElement);
+}
 
 export interface ClassNameProps {
   active?: boolean;

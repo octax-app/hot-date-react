@@ -1,27 +1,26 @@
 {
   "name": "@octax-app/hot-date-react",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "React wrapper for the hot-date natural language date input web component.",
   "type": "module",
-  "main": "./dist/hot-date.js",
-  "module": "./dist/hot-date.js",
-  "types": "./dist/hot-date.d.ts",
+  "main": "./dist/hot-date-react.js",
+  "module": "./dist/hot-date-react.js",
+  "types": "./dist/react/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/hot-date.d.ts",
-      "import": "./dist/hot-date.js"
-    },
-    "./react": {
       "types": "./dist/react/index.d.ts",
       "import": "./dist/hot-date-react.js"
+    },
+    "./element": {
+      "types": "./dist/hot-date.d.ts",
+      "import": "./dist/hot-date.js"
     }
   },
   "files": [
     "dist"
   ],
   "sideEffects": [
-    "./dist/hot-date.js",
-    "./dist/hot-date-react.js"
+    "./dist/**/*.js"
   ],
   "keywords": [
     "date-picker",

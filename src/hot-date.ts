@@ -41,14 +41,22 @@ const FUNCTIONAL_STYLE = `
     ::slotted([slot="ambiguity"][hidden]) { display: none; }
 `;
 
-const TEMPLATE = document.createElement("template");
-TEMPLATE.innerHTML = `
+const TEMPLATE_HTML = `
   <div class="field">
     <input class="input" part="input" type="text" autocomplete="off" spellcheck="false" />
     <div class="ghost" part="ghost" aria-live="polite"><span class="ghost-completion"><span class="ghost-typed" aria-hidden="true"></span><span class="ghost-tail"></span></span><span class="ghost-resolution"></span><kbd class="ghost-hint" part="hint" hidden>Tab</kbd></div>
   </div>
   <slot name="ambiguity"></slot>
 `;
+
+let _template: HTMLTemplateElement | null = null;
+function getTemplate(): HTMLTemplateElement {
+  if (!_template) {
+    _template = document.createElement("template");
+    _template.innerHTML = TEMPLATE_HTML;
+  }
+  return _template;
+}
 
 export class HotDateElement extends HTMLElement {
   public static formAssociated = true;
@@ -98,7 +106,7 @@ export class HotDateElement extends HTMLElement {
   public constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot?.append(TEMPLATE.content.cloneNode(true));
+    this.shadowRoot?.append(getTemplate().content.cloneNode(true));
 
     const root = this.shadowRoot;
 

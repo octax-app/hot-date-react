@@ -17,7 +17,7 @@ npm install @octax-app/hot-date-react
 ## Quick Start
 
 ```tsx
-import { HotDate } from '@octax-app/hot-date-react/react';
+import { HotDate } from '@octax-app/hot-date-react';
 
 function MyForm() {
   return (
