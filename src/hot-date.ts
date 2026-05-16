@@ -287,6 +287,11 @@ export class HotDateElement extends HTMLElement {
   }
 
   public forceDisplayMode(canonical: string | null): void {
+    // Never enter display mode while the user is actively typing.
+    // Check real DOM focus instead of relying on React state, which can lag
+    // behind due to batching when onChange and focusin fire close together.
+    if (this.shadowRoot?.activeElement === this.inputElement) return;
+
     if (canonical) {
       this.isDisplayMode = true;
       this.inputElement.value = this.formatValue(canonical);
