@@ -181,29 +181,67 @@ The keys map to shadow DOM parts:
 
 ### Controlled value
 
+`value` accepts the same shapes that `onChange` returns — so you can pass the value straight back without converting.
+
 ```tsx
-const [date, setDate] = useState("");
+// Point date
+const [date, setDate] = useState<string>("");
 
 <HotDate
+  dateType="point"
   value={date || null}
-  onChange={(v) => setDate(Array.isArray(v) ? v[0] : v)}
+  onChange={(v) => setDate(v as string)}
 />
 ```
 
-When `value` is provided the input renders in display mode — showing the formatted date — while unfocused. Clicking into it restores the natural-language input for editing. On blur it returns to display mode automatically.
+```tsx
+// Range — pass the [start, end] array directly back as value
+const [range, setRange] = useState<string | [string, string]>("");
+
+<HotDate
+  dateType="range"
+  value={range || null}
+  onChange={setRange}
+/>
+// After blur shows: "2026-01-01 — 2026-01-31"
+```
+
+When `value` is provided the input renders in display mode — showing the formatted date or range — while unfocused. Clicking into it restores the natural-language input for editing. On blur it returns to display mode automatically.
 
 > `onChange` never returns `null`. It returns `""` when no date is selected, a `string` for point dates, and `[string, string]` for ranges.
 
 ### Uncontrolled with a default value
 
 ```tsx
+// Point
+<HotDate defaultValue="2026-06-13" onChange={(v) => console.log(v)} />
+
+// Range
 <HotDate
-  defaultValue="2026-06-13"
+  dateType="range"
+  defaultValue={["2026-01-01", "2026-01-31"]}
   onChange={(v) => console.log(v)}
 />
 ```
 
 `defaultValue` sets the initial value on mount and immediately enters display mode, but the component is uncontrolled after that — React does not drive subsequent updates.
+
+### Imperative ref
+
+```tsx
+import { useRef } from 'react';
+import { HotDate, type HotDateHandle } from '@octax-app/hot-date-react';
+
+const ref = useRef<HotDateHandle>(null);
+
+<HotDate ref={ref} />
+
+// Imperatively control the input:
+ref.current?.focus();
+ref.current?.blur();
+ref.current?.clear();
+console.log(ref.current?.value); // string | null
+```
 
 ### Event callbacks
 
@@ -243,8 +281,8 @@ When `value` is provided the input renders in display mode — showing the forma
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `value` | `string \| null` | — | Controlled canonical value (`YYYY-MM-DD` or `YYYY-MM-DD/YYYY-MM-DD`). Enters display mode while unfocused. |
-| `defaultValue` | `string \| null` | — | Uncontrolled initial value. Mounts in display mode; React does not drive updates after mount. |
+| `value` | `string \| [string, string] \| null` | — | Controlled value. Pass a string for point dates, `[start, end]` for ranges — same shape `onChange` returns. Renders in display mode while unfocused. |
+| `defaultValue` | `string \| [string, string] \| null` | — | Uncontrolled initial value. Same shape as `value`. Mounts in display mode; React does not drive updates after mount. |
 | `onChange` | `(value: string \| [string, string]) => void` | — | Fires on every valid parse. Returns `""` when no value. Range returns `[start, end]`. |
 | `onCommit` | `(value: string \| [string, string]) => void` | — | Fires on Enter key commit. Returns `""` when no value. |
 | `onClear` | `() => void` | — | Fires when input is cleared. |
@@ -273,6 +311,9 @@ When `value` is provided the input renders in display mode — showing the forma
 | `weekStart` | `"sunday" \| "monday" \| "tuesday" \| "wednesday" \| "thursday" \| "friday" \| "saturday"` | `"monday"` | First day of week for relative expressions. |
 | `disabled` | `boolean` | `false` | Disable the input. |
 | `required` | `boolean` | `false` | Participates in form validation. |
+| `autoFocus` | `boolean` | `false` | Focus the input on mount. |
+| `tabIndex` | `number` | — | Sets the tab index on the inner `<input>`. Use `-1` to remove from tab order. |
+| `ref` | `React.Ref<HotDateHandle>` | — | Imperative handle with `focus()`, `blur()`, `clear()`, and `value`. |
 | `name` | `string` | — | Form field name. |
 | `showHint` | `boolean` | `true` | Show the Tab autocomplete hint. |
 | `error` | `boolean` | `false` | Passes `error: true` into `classNames` functions. |

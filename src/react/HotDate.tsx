@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { ParseResult } from "../lib/parser/parser-types";
 import { HotDateElement } from "../hot-date";
 import { applyFormat, formatDisplayValue, parseFormatToIso } from "./format";
@@ -35,8 +35,8 @@ function toIsoDate(date: Date | string | undefined): string | undefined {
 }
 type WEEK_START_MAP = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
 export interface HotDateProps {
-  value?: string | null;
-  defaultValue?: string | null;
+  value?: string | [string, string] | null;
+  defaultValue?: string | [string, string] | null;
   onChange?: (value: string | [string, string]) => void;
   onCommit?: (value: string | [string, string]) => void;
   onClear?: () => void;
@@ -65,6 +65,8 @@ export interface HotDateProps {
   weekStart?: WEEK_START_MAP;
   disabled?: boolean;
   required?: boolean;
+  autoFocus?: boolean;
+  tabIndex?: number;
   name?: string;
   showHint?: boolean;
   error?: boolean;
@@ -103,10 +105,23 @@ declare module "react" {
 
 type HotDateEl = HTMLElement & {
   value: string | null;
+  blur(): void;
+  clear(): void;
   forceDisplayMode?: (canonical: string | null) => void;
 };
 
-export function HotDate({
+export interface HotDateHandle {
+  /** Focus the input. */
+  focus(): void;
+  /** Blur the input. */
+  blur(): void;
+  /** Clear the current value and raw input. */
+  clear(): void;
+  /** The current committed ISO value, or null if empty. */
+  readonly value: string | null;
+}
+
+export const HotDate = forwardRef<HotDateHandle, HotDateProps>(function HotDate({
   value,
   defaultValue,
   onChange,
@@ -137,21 +152,30 @@ export function HotDate({
   weekStart,
   disabled,
   required,
+  autoFocus,
+  tabIndex,
   name,
   showHint,
   error,
   success,
   classNames,
-}: HotDateProps) {
-  const ref = useRef<HotDateEl>(null);
-  const [isActive, setIsActive] = useState<boolean>(!!value);
+}: HotDateProps, ref) {
+  const elRef = useRef<HotDateEl>(null);
+  const [isActive, setIsActive] = useState<boolean>(Array.isArray(value) ? !!value[0] : !!value);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const lastError = useRef<string | undefined>(undefined);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => elRef.current?.focus(),
+    blur: () => elRef.current?.blur(),
+    clear: () => elRef.current?.clear(),
+    get value() { return elRef.current?.value ?? null; },
+  }), []);
 
   const effectiveShowHint = showHint ?? true;
 
   useEffect(() => {
-    const el = ref.current;
+    const el = elRef.current;
     if (!el) return;
 
     // For boolean attributes, use null to remove, non-null to add
@@ -176,30 +200,45 @@ export function HotDate({
     setAttr("required", !!required);
     setAttr("hide-hint", !effectiveShowHint);
     setVal("name", name);
-  }, [placeholder, timezone, locale, weekStart, startDate, endDate, dateType, format, disabled, required, name, effectiveShowHint]);
+    if (tabIndex !== undefined) el.setAttribute("tabindex", String(tabIndex));
+    else el.removeAttribute("tabindex");
+  }, [placeholder, timezone, locale, weekStart, startDate, endDate, dateType, format, disabled, required, name, effectiveShowHint, tabIndex]);
+
+  // autoFocus on mount
+  const autoFocusRef = useRef(autoFocus);
+  useEffect(() => {
+    if (autoFocusRef.current) elRef.current?.focus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Converts the public value prop shape to the web component's internal "YYYY-MM-DD[/YYYY-MM-DD]" format.
+  const toCanonicalIso = (v: string | [string, string] | null | undefined): string | null => {
+    if (!v || (Array.isArray(v) && !v[0])) return null;
+    if (Array.isArray(v)) {
+      const start = format ? (parseFormatToIso(v[0], format) ?? v[0]) : v[0];
+      const end   = format ? (parseFormatToIso(v[1], format) ?? v[1]) : v[1];
+      return `${start}/${end}`;
+    }
+    return format ? (parseFormatToIso(v, format) ?? v) : v;
+  };
 
   // One-time mount effect for uncontrolled defaultValue
   const defaultValueRef = useRef(defaultValue);
   useEffect(() => {
-    const el = ref.current;
-    const dv = defaultValueRef.current;
-    if (!el || dv == null) return;
-    const isoValue = format ? (parseFormatToIso(dv, format) ?? dv) : dv;
+    const el = elRef.current;
+    const isoValue = toCanonicalIso(defaultValueRef.current);
+    if (!el || !isoValue) return;
     el.value = isoValue;
-    setIsActive(!!isoValue);
-    if (isoValue) {
-      el.setAttribute("display-value", formatDisplayValue(isoValue));
-      el.forceDisplayMode?.(isoValue);
-    }
+    setIsActive(true);
+    el.setAttribute("display-value", formatDisplayValue(isoValue));
+    el.forceDisplayMode?.(isoValue);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = elRef.current;
     if (!el || value === undefined) return;
-    const isoValue = value
-      ? (format ? (parseFormatToIso(value, format) ?? value) : value)
-      : null;
+    const isoValue = toCanonicalIso(value);
     el.value = isoValue;
     setIsActive(!!isoValue);
     if (isoValue) {
@@ -212,7 +251,7 @@ export function HotDate({
   }, [value, format, isFocused]);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = elRef.current;
     if (!el) return;
     // Keyboard/paste events don't reliably bubble out of shadow DOM in all environments,
     // so we attach directly to the inner <input> via the open shadow root.
@@ -307,7 +346,7 @@ export function HotDate({
   }, [onChange, onCommit, onClear, onError, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format]);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = elRef.current;
     if (!el) return;
 
     const resolve = (val: ClassNameValue | undefined): string | null => {
@@ -330,9 +369,9 @@ export function HotDate({
 
   return (
     <hot-date
-      ref={ref as unknown as React.RefObject<HTMLElement>}
+      ref={elRef as unknown as React.RefObject<HTMLElement>}
       class={className}
       style={style}
     />
   );
-}
+});

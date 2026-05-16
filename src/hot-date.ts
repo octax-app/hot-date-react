@@ -82,6 +82,7 @@ export class HotDateElement extends HTMLElement {
       "part-class-input",
       "part-class-ghost",
       "part-class-hint",
+      "tabindex",
     ];
   }
 
@@ -217,6 +218,11 @@ export class HotDateElement extends HTMLElement {
       return;
     }
 
+    if (name === "tabindex") {
+      this.inputElement.tabIndex = newValue !== null ? parseInt(newValue, 10) : 0;
+      return;
+    }
+
     this.parseAndRender();
   }
 
@@ -274,6 +280,10 @@ export class HotDateElement extends HTMLElement {
 
   public focus(): void {
     this.inputElement.focus();
+  }
+
+  public blur(): void {
+    this.inputElement.blur();
   }
 
   public forceDisplayMode(canonical: string | null): void {
