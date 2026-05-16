@@ -88,6 +88,7 @@ export class HotDateElement extends HTMLElement {
   private readonly parser = new JsParserEngine();
   private readonly internals: ElementInternals | null;
   private styleObserver: MutationObserver | null = null;
+  private readonly fieldElement: HTMLDivElement;
   private readonly inputElement: HTMLInputElement;
   private readonly ghostElement: HTMLDivElement;
   private readonly ghostTypedElement: HTMLSpanElement;
@@ -114,6 +115,7 @@ export class HotDateElement extends HTMLElement {
       throw new Error("Unable to create shadow root.");
     }
 
+    this.fieldElement = root.querySelector<HTMLDivElement>(".field") ?? document.createElement("div");
     this.inputElement = root.querySelector("input") ?? document.createElement("input");
     this.ghostElement =
       root.querySelector<HTMLDivElement>(".ghost") ?? document.createElement("div");
@@ -147,6 +149,7 @@ export class HotDateElement extends HTMLElement {
     if (!this.styleObserver) {
       this.styleObserver = new MutationObserver(() => this.syncExternalStyles());
       this.styleObserver.observe(document.head, { childList: true, subtree: true });
+      this.styleObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     }
   }
 
@@ -453,6 +456,11 @@ export class HotDateElement extends HTMLElement {
   // (Tailwind, etc.) applied via classNames prop take effect inside shadow DOM.
   private syncExternalStyles(): void {
     if (!this.shadowRoot) return;
+
+    // Mirror <html> classes (e.g. "dark") onto the inner .field wrapper so
+    // Tailwind's ancestor-based selectors (.dark .dark:bg-x) resolve inside shadow DOM.
+    const htmlClasses = Array.from(document.documentElement.classList);
+    this.fieldElement.className = "field" + (htmlClasses.length ? " " + htmlClasses.join(" ") : "");
 
     // Some frameworks inject styles via adoptedStyleSheets
     try {

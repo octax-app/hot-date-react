@@ -1,6 +1,6 @@
 {
   "name": "@octax-app/hot-date-react",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "React wrapper for the hot-date natural language date input web component.",
   "type": "module",
   "main": "./dist/hot-date-react.js",
