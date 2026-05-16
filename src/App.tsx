@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { HotDate } from "./react/HotDate";
 
@@ -34,6 +34,10 @@ export default function App() {
   const [controlled, setControlled] = useState<string | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm<FormValues>();
+
+  const [eventsLog, setEventsLog] = useState<string[]>([]);
+  const [hovered, setHovered] = useState(false);
+  const addLog = useCallback((msg: string) => setEventsLog(prev => [msg, ...prev].slice(0, 10)), []);
 
   const today = new Date().toISOString().slice(0, 10);
   const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -168,6 +172,50 @@ export default function App() {
           placeholder="or type a date"
         />
         <ValueDisplay label="controlled value" value={controlled} />
+      </Section>
+
+      <Section title="8 — Events + defaultValue">
+        <p style={{ fontSize: "0.8rem", color: "#888", marginBottom: "0.75rem" }}>
+          Pre-filled via <code>defaultValue</code>. Hover, focus, type, paste, click to see events fire.
+        </p>
+        <HotDate
+          defaultValue="2026-06-13"
+          placeholder="type anything..."
+          onFocus={() => addLog("onFocus")}
+          onBlur={() => addLog("onBlur")}
+          onKeyDown={(e) => addLog(`onKeyDown: "${e.key}"`)}
+          onKeyUp={(e) => addLog(`onKeyUp: "${e.key}"`)}
+          onInput={(v) => addLog(`onInput: "${v}"`)}
+          onPaste={() => addLog("onPaste")}
+          onClick={() => addLog("onClick")}
+          onMouseEnter={() => { setHovered(true); addLog("onMouseEnter"); }}
+          onMouseLeave={() => { setHovered(false); addLog("onMouseLeave"); }}
+          onMouseDown={() => addLog("onMouseDown")}
+          onMouseUp={() => addLog("onMouseUp")}
+          classNames={{
+            input: ({ focused }) =>
+              `border rounded px-3 py-2 w-full text-sm transition-colors outline-none
+               ${focused ? "border-indigo-500 ring-2 ring-indigo-100" : "border-gray-300"}
+               ${hovered ? "border-indigo-300" : ""}`,
+          }}
+        />
+        <div style={{
+          marginTop: "0.75rem", background: "#f4f4f5", borderRadius: 6,
+          padding: "0.5rem 0.75rem", minHeight: 96, fontSize: "0.8rem", fontFamily: "monospace",
+        }}>
+          {eventsLog.length === 0
+            ? <span style={{ color: "#aaa" }}>events will appear here…</span>
+            : eventsLog.map((msg, i) => (
+                <div key={i} style={{ color: i === 0 ? "#6366f1" : "#888", lineHeight: 1.6 }}>{msg}</div>
+              ))
+          }
+        </div>
+        <button
+          onClick={() => setEventsLog([])}
+          style={{ marginTop: "0.4rem", fontSize: "0.75rem", color: "#888", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        >
+          clear log
+        </button>
       </Section>
 
       <Section title="7 — React Hook Form Controller">
