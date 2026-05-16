@@ -273,6 +273,19 @@ export class HotDateElement extends HTMLElement {
     this.inputElement.focus();
   }
 
+  public forceDisplayMode(canonical: string | null): void {
+    if (canonical) {
+      this.isDisplayMode = true;
+      this.inputElement.value = this.formatValue(canonical);
+      this.ghostElement.hidden = true;
+    } else {
+      this.isDisplayMode = false;
+      this.inputElement.value = this.rawInputValue;
+      this.ghostElement.hidden = false;
+      this.renderGhost();
+    }
+  }
+
   public clear(): void {
     this.isDisplayMode = false;
     this.ghostElement.hidden = false;

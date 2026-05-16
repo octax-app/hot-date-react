@@ -35,9 +35,22 @@ function toIsoDate(date: Date | string | undefined): string | undefined {
 type WEEK_START_MAP = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
 export interface HotDateProps {
   value?: string | null;
+  defaultValue?: string | null;
   onChange?: (value: string | [string, string] | null) => void;
   onCommit?: (value: string | [string, string] | null) => void;
   onClear?: () => void;
+  onFocus?: (e: FocusEvent) => void;
+  onBlur?: (e: FocusEvent) => void;
+  onKeyDown?: (e: KeyboardEvent) => void;
+  onKeyUp?: (e: KeyboardEvent) => void;
+  onInput?: (rawValue: string) => void;
+  onPaste?: (e: ClipboardEvent) => void;
+  onClick?: (e: MouseEvent) => void;
+  onMouseEnter?: (e: MouseEvent) => void;
+  onMouseLeave?: (e: MouseEvent) => void;
+  onMouseDown?: (e: MouseEvent) => void;
+  onMouseUp?: (e: MouseEvent) => void;
+  onMouseMove?: (e: MouseEvent) => void;
   format?: string;
   dateType?: "point" | "range";
   startDate?: Date | string;
@@ -88,13 +101,27 @@ declare module "react" {
 
 type HotDateEl = HTMLElement & {
   value: string | null;
+  forceDisplayMode: (canonical: string | null) => void;
 };
 
 export function HotDate({
   value,
+  defaultValue,
   onChange,
   onCommit,
   onClear,
+  onFocus,
+  onBlur,
+  onKeyDown,
+  onKeyUp,
+  onInput,
+  onPaste,
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+  onMouseDown,
+  onMouseUp,
+  onMouseMove,
   format,
   dateType = "point",
   startDate,
@@ -147,10 +174,25 @@ export function HotDate({
     setVal("name", name);
   }, [placeholder, timezone, locale, weekStart, startDate, endDate, dateType, format, disabled, required, name, effectiveShowHint]);
 
+  // One-time mount effect for uncontrolled defaultValue
+  const defaultValueRef = useRef(defaultValue);
+  useEffect(() => {
+    const el = ref.current;
+    const dv = defaultValueRef.current;
+    if (!el || dv == null) return;
+    const isoValue = format ? (parseFormatToIso(dv, format) ?? dv) : dv;
+    el.value = isoValue;
+    setIsActive(!!isoValue);
+    if (isoValue) {
+      el.setAttribute("display-value", formatDisplayValue(isoValue));
+      el.forceDisplayMode(isoValue);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const el = ref.current;
     if (!el || value === undefined) return;
-    // If format is set, value may be in formatted form — parse back to ISO
     const isoValue = value
       ? (format ? (parseFormatToIso(value, format) ?? value) : value)
       : null;
@@ -158,10 +200,12 @@ export function HotDate({
     setIsActive(!!isoValue);
     if (isoValue) {
       el.setAttribute("display-value", formatDisplayValue(isoValue));
+      if (!isFocused) el.forceDisplayMode(isoValue);
     } else {
       el.removeAttribute("display-value");
+      if (!isFocused) el.forceDisplayMode(null);
     }
-  }, [value, format]);
+  }, [value, format, isFocused]);
 
   useEffect(() => {
     const el = ref.current;
@@ -183,14 +227,43 @@ export function HotDate({
       onClear?.();
     };
 
-    const handleFocusIn = () => setIsFocused(true);
-    const handleFocusOut = () => setIsFocused(false);
+    const handleFocusIn = (e: Event) => {
+      setIsFocused(true);
+      onFocus?.(e as FocusEvent);
+    };
+    const handleFocusOut = (e: Event) => {
+      setIsFocused(false);
+      onBlur?.(e as FocusEvent);
+    };
+    const handleKeyDown = (e: Event) => onKeyDown?.(e as KeyboardEvent);
+    const handleKeyUp = (e: Event) => onKeyUp?.(e as KeyboardEvent);
+    const handleRawInput = (e: Event) => {
+      const detail = (e as CustomEvent<{ rawInput: string }>).detail;
+      onInput?.(detail.rawInput);
+    };
+    const handlePaste = (e: Event) => onPaste?.(e as ClipboardEvent);
+    const handleClick = (e: Event) => onClick?.(e as MouseEvent);
+    const handleMouseEnter = (e: Event) => onMouseEnter?.(e as MouseEvent);
+    const handleMouseLeave = (e: Event) => onMouseLeave?.(e as MouseEvent);
+    const handleMouseDown = (e: Event) => onMouseDown?.(e as MouseEvent);
+    const handleMouseUp = (e: Event) => onMouseUp?.(e as MouseEvent);
+    const handleMouseMove = (e: Event) => onMouseMove?.(e as MouseEvent);
 
     el.addEventListener("value-change", handleChange);
     el.addEventListener("value-commit", handleCommit);
     el.addEventListener("clear", handleClear);
     el.addEventListener("focusin", handleFocusIn);
     el.addEventListener("focusout", handleFocusOut);
+    el.addEventListener("keydown", handleKeyDown);
+    el.addEventListener("keyup", handleKeyUp);
+    el.addEventListener("raw-input-change", handleRawInput);
+    el.addEventListener("paste", handlePaste);
+    el.addEventListener("click", handleClick);
+    el.addEventListener("mouseenter", handleMouseEnter);
+    el.addEventListener("mouseleave", handleMouseLeave);
+    el.addEventListener("mousedown", handleMouseDown);
+    el.addEventListener("mouseup", handleMouseUp);
+    el.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       el.removeEventListener("value-change", handleChange);
@@ -198,8 +271,18 @@ export function HotDate({
       el.removeEventListener("clear", handleClear);
       el.removeEventListener("focusin", handleFocusIn);
       el.removeEventListener("focusout", handleFocusOut);
+      el.removeEventListener("keydown", handleKeyDown);
+      el.removeEventListener("keyup", handleKeyUp);
+      el.removeEventListener("raw-input-change", handleRawInput);
+      el.removeEventListener("paste", handlePaste);
+      el.removeEventListener("click", handleClick);
+      el.removeEventListener("mouseenter", handleMouseEnter);
+      el.removeEventListener("mouseleave", handleMouseLeave);
+      el.removeEventListener("mousedown", handleMouseDown);
+      el.removeEventListener("mouseup", handleMouseUp);
+      el.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [onChange, onCommit, onClear, format]);
+  }, [onChange, onCommit, onClear, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format]);
 
   useEffect(() => {
     const el = ref.current;

@@ -162,16 +162,55 @@ const [date, setDate] = useState<string | null>(null);
 />
 ```
 
-When a `value` is set, it appears as a human-readable label on the right side of the input (the ghost resolution area). The text field stays empty for natural typing. On blur, the field shows the formatted value; on focus, it restores the raw input.
+When `value` is provided the input renders in display mode — showing the formatted date — while unfocused. Clicking into it restores the natural-language input for editing. On blur it returns to display mode automatically.
+
+### Uncontrolled with a default value
+
+```tsx
+<HotDate
+  defaultValue="2026-06-13"
+  onChange={(v) => console.log(v)}
+/>
+```
+
+`defaultValue` sets the initial value on mount and immediately enters display mode, but the component is uncontrolled after that — React does not drive subsequent updates.
+
+### Event callbacks
+
+```tsx
+<HotDate
+  onFocus={(e) => console.log('focused', e)}
+  onBlur={(e) => console.log('blurred', e)}
+  onKeyDown={(e) => console.log('key', e.key)}
+  onInput={(rawValue) => console.log('typing', rawValue)}
+  onPaste={(e) => console.log('pasted')}
+  onClick={(e) => console.log('clicked')}
+  onMouseEnter={(e) => console.log('mouse in')}
+  onMouseLeave={(e) => console.log('mouse out')}
+/>
+```
 
 ## Props
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `value` | `string \| null` | — | Controlled canonical value (`YYYY-MM-DD` or `YYYY-MM-DD/YYYY-MM-DD`) |
+| `value` | `string \| null` | — | Controlled canonical value (`YYYY-MM-DD` or `YYYY-MM-DD/YYYY-MM-DD`). Enters display mode while unfocused. |
+| `defaultValue` | `string \| null` | — | Uncontrolled initial value. Mounts in display mode; React does not drive updates after mount. |
 | `onChange` | `(value: string \| [string, string] \| null) => void` | — | Fires on every valid parse. Range returns `[start, end]`. |
 | `onCommit` | `(value: string \| [string, string] \| null) => void` | — | Fires on Enter key commit. |
 | `onClear` | `() => void` | — | Fires when input is cleared. |
+| `onFocus` | `(e: FocusEvent) => void` | — | Fires when the input gains focus. |
+| `onBlur` | `(e: FocusEvent) => void` | — | Fires when the input loses focus. |
+| `onKeyDown` | `(e: KeyboardEvent) => void` | — | Fires on keydown. |
+| `onKeyUp` | `(e: KeyboardEvent) => void` | — | Fires on keyup. |
+| `onInput` | `(rawValue: string) => void` | — | Fires on every keystroke with the raw typed string. |
+| `onPaste` | `(e: ClipboardEvent) => void` | — | Fires when content is pasted into the input. |
+| `onClick` | `(e: MouseEvent) => void` | — | Fires on click. |
+| `onMouseEnter` | `(e: MouseEvent) => void` | — | Fires when the mouse enters the component. |
+| `onMouseLeave` | `(e: MouseEvent) => void` | — | Fires when the mouse leaves the component. |
+| `onMouseDown` | `(e: MouseEvent) => void` | — | Fires on mousedown. |
+| `onMouseUp` | `(e: MouseEvent) => void` | — | Fires on mouseup. |
+| `onMouseMove` | `(e: MouseEvent) => void` | — | Fires on mousemove. |
 | `format` | `string` | `"YYYY-MM-DD"` | Output format. Tokens: `YYYY MM DD YY M D` (case-insensitive). |
 | `dateType` | `"point" \| "range"` | `"point"` | Restrict input to single date or range. |
 | `startDate` | `Date \| string` | — | Minimum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. |
