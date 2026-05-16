@@ -124,6 +124,20 @@ The component renders as a plain browser input by default — no decorative styl
 }
 ```
 
+### Tailwind dark mode
+
+`dark:` variants work out of the box. The component mirrors all classes from `<html>` into the shadow root on every render and whenever they change, so Tailwind's `.dark .dark\:*` selectors resolve correctly inside the shadow DOM.
+
+```tsx
+<HotDate
+  classNames={{
+    input: "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600",
+  }}
+/>
+```
+
+Toggling `document.documentElement.classList.toggle('dark')` at runtime is picked up immediately.
+
 ### Per-part class names (Tailwind-friendly)
 
 Use `classNames` to apply classes directly to shadow DOM elements. External stylesheets — including Tailwind — are automatically mirrored into the shadow root, so utility classes work out of the box.
@@ -168,15 +182,17 @@ The keys map to shadow DOM parts:
 ### Controlled value
 
 ```tsx
-const [date, setDate] = useState<string | null>(null);
+const [date, setDate] = useState("");
 
 <HotDate
-  value={date}
-  onChange={(v) => setDate(typeof v === 'string' ? v : null)}
+  value={date || null}
+  onChange={(v) => setDate(Array.isArray(v) ? v[0] : v)}
 />
 ```
 
 When `value` is provided the input renders in display mode — showing the formatted date — while unfocused. Clicking into it restores the natural-language input for editing. On blur it returns to display mode automatically.
+
+> `onChange` never returns `null`. It returns `""` when no date is selected, a `string` for point dates, and `[string, string]` for ranges.
 
 ### Uncontrolled with a default value
 
@@ -269,6 +285,9 @@ When `value` is provided the input renders in display mode — showing the forma
 | --- | --- | --- |
 | `"point"` | `"2026-06-13"` | `"06/13/2026"` |
 | `"range"` | `["2026-06-01", "2026-06-30"]` | `["06/01/2026", "06/30/2026"]` |
+| `"combined"` | `"2026-06-13"` or `["2026-06-01", "2026-06-30"]` | `"06/13/2026"` or `["06/01/2026", "06/30/2026"]` |
+
+Empty / no selection always returns `""` regardless of `dateType` or `format`.
 
 ## Keyboard
 
