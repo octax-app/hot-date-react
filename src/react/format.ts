@@ -85,8 +85,8 @@ export function formatDisplayValue(canonical: string | null): string {
 export function applyFormat(
   canonical: string | null,
   format?: string,
-): string | [string, string] | null {
-  if (!canonical) return null;
+): string | [string, string] {
+  if (!canonical) return "";
 
   if (canonical.includes("/")) {
     const [start, end] = canonical.split("/");

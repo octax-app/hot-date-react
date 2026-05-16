@@ -187,6 +187,25 @@ When `value` is provided the input renders in display mode — showing the forma
   onClick={(e) => console.log('clicked')}
   onMouseEnter={(e) => console.log('mouse in')}
   onMouseLeave={(e) => console.log('mouse out')}
+  onError={(err) => console.log(err)} // "Date is outside the allowed range." | undefined
+/>
+```
+
+### Error handling
+
+`onError` fires whenever the typed input is invalid — out of range, wrong mode, or unparseable. It fires with `undefined` when the error clears (user types a valid date or empties the field). Only fires when the error state actually changes, not on every keystroke.
+
+```tsx
+<HotDate
+  endDate={new Date()}              // today is the latest allowed date
+  onError={(err) => {
+    if (err) setErrorMsg(err);      // e.g. "Date is outside the allowed range."
+    else setErrorMsg("");           // cleared
+  }}
+  onChange={(value) => {
+    // value is "" when nothing is selected, "YYYY-MM-DD" when valid
+    setValue(value as string);
+  }}
 />
 ```
 
@@ -196,9 +215,10 @@ When `value` is provided the input renders in display mode — showing the forma
 | --- | --- | --- | --- |
 | `value` | `string \| null` | — | Controlled canonical value (`YYYY-MM-DD` or `YYYY-MM-DD/YYYY-MM-DD`). Enters display mode while unfocused. |
 | `defaultValue` | `string \| null` | — | Uncontrolled initial value. Mounts in display mode; React does not drive updates after mount. |
-| `onChange` | `(value: string \| [string, string] \| null) => void` | — | Fires on every valid parse. Range returns `[start, end]`. |
-| `onCommit` | `(value: string \| [string, string] \| null) => void` | — | Fires on Enter key commit. |
+| `onChange` | `(value: string \| [string, string]) => void` | — | Fires on every valid parse. Returns `""` when no value. Range returns `[start, end]`. |
+| `onCommit` | `(value: string \| [string, string]) => void` | — | Fires on Enter key commit. Returns `""` when no value. |
 | `onClear` | `() => void` | — | Fires when input is cleared. |
+| `onError` | `(error: string \| undefined) => void` | — | Fires when input is invalid (out of range, unparseable, wrong mode). Fires `undefined` when the error clears. Only fires on state change, not every keystroke. |
 | `onFocus` | `(e: FocusEvent) => void` | — | Fires when the input gains focus. |
 | `onBlur` | `(e: FocusEvent) => void` | — | Fires when the input loses focus. |
 | `onKeyDown` | `(e: KeyboardEvent) => void` | — | Fires on keydown. |

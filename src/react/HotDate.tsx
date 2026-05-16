@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ParseResult } from "../lib/parser/parser-types";
 import { HotDateElement } from "../hot-date";
 import { applyFormat, formatDisplayValue, parseFormatToIso } from "./format";
 
@@ -36,9 +37,10 @@ type WEEK_START_MAP = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday'
 export interface HotDateProps {
   value?: string | null;
   defaultValue?: string | null;
-  onChange?: (value: string | [string, string] | null) => void;
-  onCommit?: (value: string | [string, string] | null) => void;
+  onChange?: (value: string | [string, string]) => void;
+  onCommit?: (value: string | [string, string]) => void;
   onClear?: () => void;
+  onError?: (error: string | undefined) => void;
   onFocus?: (e: FocusEvent) => void;
   onBlur?: (e: FocusEvent) => void;
   onKeyDown?: (e: KeyboardEvent) => void;
@@ -101,7 +103,7 @@ declare module "react" {
 
 type HotDateEl = HTMLElement & {
   value: string | null;
-  forceDisplayMode: (canonical: string | null) => void;
+  forceDisplayMode?: (canonical: string | null) => void;
 };
 
 export function HotDate({
@@ -110,6 +112,7 @@ export function HotDate({
   onChange,
   onCommit,
   onClear,
+  onError,
   onFocus,
   onBlur,
   onKeyDown,
@@ -143,6 +146,7 @@ export function HotDate({
   const ref = useRef<HotDateEl>(null);
   const [isActive, setIsActive] = useState<boolean>(!!value);
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const lastError = useRef<string | undefined>(undefined);
 
   const effectiveShowHint = showHint ?? true;
 
@@ -185,7 +189,7 @@ export function HotDate({
     setIsActive(!!isoValue);
     if (isoValue) {
       el.setAttribute("display-value", formatDisplayValue(isoValue));
-      el.forceDisplayMode(isoValue);
+      el.forceDisplayMode?.(isoValue);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -200,16 +204,19 @@ export function HotDate({
     setIsActive(!!isoValue);
     if (isoValue) {
       el.setAttribute("display-value", formatDisplayValue(isoValue));
-      if (!isFocused) el.forceDisplayMode(isoValue);
+      if (!isFocused) el.forceDisplayMode?.(isoValue);
     } else {
       el.removeAttribute("display-value");
-      if (!isFocused) el.forceDisplayMode(null);
+      if (!isFocused) el.forceDisplayMode?.(null);
     }
   }, [value, format, isFocused]);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Keyboard/paste events don't reliably bubble out of shadow DOM in all environments,
+    // so we attach directly to the inner <input> via the open shadow root.
+    const shadowInput = el.shadowRoot?.querySelector<HTMLInputElement>("input") ?? null;
 
     const handleChange = (e: Event) => {
       const detail = (e as CustomEvent<{ value: string | null }>).detail;
@@ -241,6 +248,16 @@ export function HotDate({
       const detail = (e as CustomEvent<{ rawInput: string }>).detail;
       onInput?.(detail.rawInput);
     };
+    const handleParseChange = (e: Event) => {
+      const { status, parseResult } = (e as CustomEvent<{ status: string; parseResult: ParseResult }>).detail;
+      const next = (status === "invalid" && parseResult.rawInput)
+        ? (parseResult.errors[0] ?? "Invalid date")
+        : undefined;
+      if (next !== lastError.current) {
+        lastError.current = next;
+        onError?.(next);
+      }
+    };
     const handlePaste = (e: Event) => onPaste?.(e as ClipboardEvent);
     const handleClick = (e: Event) => onClick?.(e as MouseEvent);
     const handleMouseEnter = (e: Event) => onMouseEnter?.(e as MouseEvent);
@@ -249,21 +266,25 @@ export function HotDate({
     const handleMouseUp = (e: Event) => onMouseUp?.(e as MouseEvent);
     const handleMouseMove = (e: Event) => onMouseMove?.(e as MouseEvent);
 
+    // Custom events are dispatched from the host element itself
     el.addEventListener("value-change", handleChange);
     el.addEventListener("value-commit", handleCommit);
     el.addEventListener("clear", handleClear);
     el.addEventListener("focusin", handleFocusIn);
     el.addEventListener("focusout", handleFocusOut);
-    el.addEventListener("keydown", handleKeyDown);
-    el.addEventListener("keyup", handleKeyUp);
     el.addEventListener("raw-input-change", handleRawInput);
-    el.addEventListener("paste", handlePaste);
+    el.addEventListener("parse-change", handleParseChange);
+    // Mouse events fire on the host element boundary (mouseenter/leave) or bubble from shadow (click etc.)
     el.addEventListener("click", handleClick);
     el.addEventListener("mouseenter", handleMouseEnter);
     el.addEventListener("mouseleave", handleMouseLeave);
     el.addEventListener("mousedown", handleMouseDown);
     el.addEventListener("mouseup", handleMouseUp);
     el.addEventListener("mousemove", handleMouseMove);
+    // Keyboard + paste go directly on the shadow input — these don't reliably reach the host
+    shadowInput?.addEventListener("keydown", handleKeyDown);
+    shadowInput?.addEventListener("keyup", handleKeyUp);
+    shadowInput?.addEventListener("paste", handlePaste);
 
     return () => {
       el.removeEventListener("value-change", handleChange);
@@ -271,18 +292,19 @@ export function HotDate({
       el.removeEventListener("clear", handleClear);
       el.removeEventListener("focusin", handleFocusIn);
       el.removeEventListener("focusout", handleFocusOut);
-      el.removeEventListener("keydown", handleKeyDown);
-      el.removeEventListener("keyup", handleKeyUp);
       el.removeEventListener("raw-input-change", handleRawInput);
-      el.removeEventListener("paste", handlePaste);
+      el.removeEventListener("parse-change", handleParseChange);
       el.removeEventListener("click", handleClick);
       el.removeEventListener("mouseenter", handleMouseEnter);
       el.removeEventListener("mouseleave", handleMouseLeave);
       el.removeEventListener("mousedown", handleMouseDown);
       el.removeEventListener("mouseup", handleMouseUp);
       el.removeEventListener("mousemove", handleMouseMove);
+      shadowInput?.removeEventListener("keydown", handleKeyDown);
+      shadowInput?.removeEventListener("keyup", handleKeyUp);
+      shadowInput?.removeEventListener("paste", handlePaste);
     };
-  }, [onChange, onCommit, onClear, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format]);
+  }, [onChange, onCommit, onClear, onError, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format]);
 
   useEffect(() => {
     const el = ref.current;
