@@ -51,6 +51,20 @@ function MyForm() {
 />
 ```
 
+### Combined (point + range)
+
+```tsx
+<HotDate
+  dateType="combined"
+  onChange={(value) => console.log(value)}
+  // "tomorrow"           → "2026-05-18"
+  // "this week"          → ["2026-05-12", "2026-05-18"]
+  // "jan to feb"         → ["2026-01-01", "2026-02-28"]
+/>
+```
+
+`combined` accepts both single dates and ranges. `onChange` returns a `string` for point dates and `[string, string]` for ranges — the same shapes as the dedicated modes.
+
 ### Custom output format
 
 ```tsx
@@ -232,7 +246,7 @@ When `value` is provided the input renders in display mode — showing the forma
 | `onMouseUp` | `(e: MouseEvent) => void` | — | Fires on mouseup. |
 | `onMouseMove` | `(e: MouseEvent) => void` | — | Fires on mousemove. |
 | `format` | `string` | `"YYYY-MM-DD"` | Output format. Tokens: `YYYY MM DD YY M D` (case-insensitive). |
-| `dateType` | `"point" \| "range"` | `"point"` | Restrict input to single date or range. |
+| `dateType` | `"point" \| "range" \| "combined"` | `"point"` | `"point"` = single date only, `"range"` = range only, `"combined"` = both simultaneously (returns `string` or `[string, string]`). |
 | `startDate` | `Date \| string` | — | Minimum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. |
 | `endDate` | `Date \| string` | — | Maximum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. |
 | `className` | `string` | — | CSS class on the host element. |

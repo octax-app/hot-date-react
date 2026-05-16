@@ -54,7 +54,7 @@ export interface HotDateProps {
   onMouseUp?: (e: MouseEvent) => void;
   onMouseMove?: (e: MouseEvent) => void;
   format?: string;
-  dateType?: "point" | "range";
+  dateType?: "point" | "range" | "combined";
   startDate?: Date | string;
   endDate?: Date | string;
   className?: string;
@@ -170,7 +170,7 @@ export function HotDate({
     setVal("week-start", weekStart);
     setVal("start-date", toIsoDate(startDate));
     setVal("end-date", toIsoDate(endDate));
-    setVal("mode", dateType);
+    setVal("mode", dateType === "combined" ? "any" : dateType);
     setVal("format", format);
     setAttr("disabled", !!disabled);
     setAttr("required", !!required);
