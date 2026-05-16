@@ -581,20 +581,26 @@ export function withDayInMonth(referenceDate: Date, day: number, timeZone = SYST
   );
 }
 
+type WeekStartDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+const WEEK_START_ISO_DAY: Record<WeekStartDay, number> = {
+  monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7,
+};
+
 export function startOfWeek(
   referenceDate: Date,
-  weekStart: "sunday" | "monday",
+  weekStart: WeekStartDay,
   timeZone = SYSTEM_TIME_ZONE,
 ): Date {
   const zonedDateTime = toZonedDateTime(startOfDay(referenceDate, timeZone), timeZone);
-  const targetFirstDay = weekStart === "monday" ? 1 : 7;
+  const targetFirstDay = WEEK_START_ISO_DAY[weekStart] ?? 1;
   const daysBack = (zonedDateTime.dayOfWeek - targetFirstDay + 7) % 7;
   return toDate(zonedDateTime.subtract({ days: daysBack }));
 }
 
 export function endOfWeek(
   referenceDate: Date,
-  weekStart: "sunday" | "monday",
+  weekStart: WeekStartDay,
   timeZone = SYSTEM_TIME_ZONE,
 ): Date {
   const start = startOfWeek(referenceDate, weekStart, timeZone);

@@ -11,58 +11,42 @@ import type {
 
 const DEFAULT_PLACEHOLDER = "type anything...";
 
-// Always injected — structural CSS required for the ghost overlay to work
+// Structural CSS required for the ghost overlay to work.
+// No decorative styles — component renders as a plain browser input by default.
 const FUNCTIONAL_STYLE = `
-    :host { display: inline-block; font: inherit; color: inherit; }
-    .field { position: relative; display: block; }
+    :host { display: block; font: inherit; color: inherit; }
+    .field { position: relative; display: block; width: 100%; }
     .input {
-      font: inherit; color: inherit; background: transparent;
-      border: 0; outline: 0; padding: 0; margin: 0;
-      width: 100%; min-width: 20ch; box-sizing: border-box;
+      font: inherit; color: inherit;
+      width: 100%; box-sizing: border-box;
+      border: 1px solid #cccccc50; border-radius: 4px;
+      padding: 5px 4px;
+      background: Field;
     }
     .ghost {
       position: absolute; inset: 0; display: flex; align-items: center;
-      gap: 1rem; pointer-events: none; font: inherit;
+      pointer-events: none; font: inherit;
       white-space: pre; overflow: hidden;
     }
     .ghost-completion { min-width: 0; overflow: hidden; white-space: pre; }
     .ghost-typed { color: transparent; }
-    .ghost-hint[hidden] { display: none; }
-    ::slotted([slot="ambiguity"][hidden]) { display: none; }
-    .examples-text[hidden] { display: none; }
-`;
-
-// Injected only when no-style is NOT set — all visual/decorative CSS
-const DECORATIVE_STYLE = `
-    :host {
-      box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 4px 8px rgb(0 0 0 / .1);
-      border-radius: 20px; padding: 5px; background: #eeeeee7d;
-    }
-    .field {
-      font-size: 1rem; background: #ffffff;
-      border: 1px solid #e4e4e7; border-radius: 0.9rem; padding: 1rem;
-    }
-    .ghost { padding: 1rem; justify-content: space-between; }
     .ghost-tail { opacity: 0.5; }
     .ghost-hint {
-      margin-left: 0.5em; padding: 0.05em 0.35em;
-      border: 1px solid currentColor; border-radius: 3px;
-      font-size: 0.7em; font-family: inherit; opacity: 0.4; vertical-align: middle;
+      flex-shrink: 0; margin-left: 6px;
+      padding: 0.05em 0.35em; border: 1px solid currentColor; border-radius: 3px;
+      font-size: 0.7em; font-family: inherit; opacity: 0.5; background: transparent;
     }
-    .ghost-resolution { flex: 0 0 auto; opacity: 0.5; }
-    ::slotted([slot="ambiguity"]) {
-      margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem;
-    }
-    p { line-height: 1.7; padding: 0 10px 5px; margin-bottom: 0; font-size: 14px; font-style: italic; }
+    .ghost-hint[hidden] { display: none; }
+    .ghost-resolution { opacity: 0.5; flex: 0 0 auto; margin-left: auto; }
+    ::slotted([slot="ambiguity"][hidden]) { display: none; }
 `;
 
 const TEMPLATE = document.createElement("template");
 TEMPLATE.innerHTML = `
-  <div class="field" part="field">
+  <div class="field">
     <input class="input" part="input" type="text" autocomplete="off" spellcheck="false" />
-    <div class="ghost" part="ghost" aria-live="polite"><span class="ghost-completion"><span class="ghost-typed" aria-hidden="true"></span><span class="ghost-tail"></span><kbd class="ghost-hint" part="hint" hidden>Tab</kbd></span><span class="ghost-resolution"></span></div>
+    <div class="ghost" part="ghost" aria-live="polite"><span class="ghost-completion"><span class="ghost-typed" aria-hidden="true"></span><span class="ghost-tail"></span></span><span class="ghost-resolution"></span><kbd class="ghost-hint" part="hint" hidden>Tab</kbd></div>
   </div>
-  <p class="examples-text">Examples: march 14 to 28 · tomorrow · 3/1/86 · 9 days after christmas until new years<br />Hit <kbd class="ghost-hint">Tab</kbd> to autocomplete.</p>
   <slot name="ambiguity"></slot>
 `;
 
@@ -71,6 +55,7 @@ export class HotDateElement extends HTMLElement {
 
   public static get observedAttributes(): string[] {
     return [
+      "class",
       "value",
       "timezone",
       "locale",
@@ -81,13 +66,11 @@ export class HotDateElement extends HTMLElement {
       "name",
       "disabled",
       "required",
-      "no-style",
       "start-date",
       "end-date",
-      "hide-examples",
       "hide-hint",
       "display-value",
-      "part-class-field",
+      "format",
       "part-class-input",
       "part-class-ghost",
       "part-class-hint",
@@ -96,7 +79,7 @@ export class HotDateElement extends HTMLElement {
 
   private readonly parser = new JsParserEngine();
   private readonly internals: ElementInternals | null;
-  private readonly fieldElement: HTMLDivElement;
+  private styleObserver: MutationObserver | null = null;
   private readonly inputElement: HTMLInputElement;
   private readonly ghostElement: HTMLDivElement;
   private readonly ghostTypedElement: HTMLSpanElement;
@@ -107,8 +90,10 @@ export class HotDateElement extends HTMLElement {
 
   private rawInputValue = "";
   private committedValue: string | null = null;
+  private isDisplayMode = false;
   private parseState: ParseResult = this.createEmptyParseState();
   private activeSuggestionIndexValue = 0;
+  private lastTabCompletedTo: string | null = null;
 
   public constructor() {
     super();
@@ -121,8 +106,6 @@ export class HotDateElement extends HTMLElement {
       throw new Error("Unable to create shadow root.");
     }
 
-    this.fieldElement =
-      root.querySelector<HTMLDivElement>(".field") ?? document.createElement("div");
     this.inputElement = root.querySelector("input") ?? document.createElement("input");
     this.ghostElement =
       root.querySelector<HTMLDivElement>(".ghost") ?? document.createElement("div");
@@ -148,10 +131,20 @@ export class HotDateElement extends HTMLElement {
       this.append(this.ambiguityElement);
     }
     this.updateStyles();
-    this.updateExamplesVisibility();
+    this.syncExternalStyles();
     this.updateHintVisibility();
     this.syncInputPresentation();
     this.parseAndRender();
+
+    if (!this.styleObserver) {
+      this.styleObserver = new MutationObserver(() => this.syncExternalStyles());
+      this.styleObserver.observe(document.head, { childList: true, subtree: true });
+    }
+  }
+
+  public disconnectedCallback(): void {
+    this.styleObserver?.disconnect();
+    this.styleObserver = null;
   }
 
   public attributeChangedCallback(
@@ -160,6 +153,12 @@ export class HotDateElement extends HTMLElement {
     newValue: string | null,
   ): void {
     if (oldValue === newValue) {
+      return;
+    }
+
+    if (name === "class") {
+      this.applyPartClass(this.inputElement, oldValue, newValue);
+      this.syncExternalStyles();
       return;
     }
 
@@ -179,16 +178,6 @@ export class HotDateElement extends HTMLElement {
       return;
     }
 
-    if (name === "no-style") {
-      this.updateStyles();
-      return;
-    }
-
-    if (name === "hide-examples") {
-      this.updateExamplesVisibility();
-      return;
-    }
-
     if (name === "hide-hint") {
       this.updateHintVisibility();
       return;
@@ -199,23 +188,21 @@ export class HotDateElement extends HTMLElement {
       return;
     }
 
-    if (name === "part-class-field") {
-      this.applyPartClass(this.fieldElement, oldValue, newValue);
-      return;
-    }
-
     if (name === "part-class-input") {
       this.applyPartClass(this.inputElement, oldValue, newValue);
+      this.syncExternalStyles();
       return;
     }
 
     if (name === "part-class-ghost") {
       this.applyPartClass(this.ghostElement, oldValue, newValue);
+      this.syncExternalStyles();
       return;
     }
 
     if (name === "part-class-hint") {
       this.applyPartClass(this.ghostHintElement, oldValue, newValue);
+      this.syncExternalStyles();
       return;
     }
 
@@ -279,6 +266,8 @@ export class HotDateElement extends HTMLElement {
   }
 
   public clear(): void {
+    this.isDisplayMode = false;
+    this.ghostElement.hidden = false;
     this.rawInputValue = "";
     this.committedValue = null;
     this.removeAttribute("value");
@@ -431,29 +420,81 @@ export class HotDateElement extends HTMLElement {
   private updateStyles(): void {
     if (!this.shadowRoot) return;
 
-    // Functional style: always present (needed for ghost overlay positioning)
     if (!this.shadowRoot.querySelector("style.functional")) {
       const s = document.createElement("style");
       s.className = "functional";
       s.textContent = FUNCTIONAL_STYLE;
       this.shadowRoot.prepend(s);
     }
-
-    // Decorative style: only when no-style attribute is absent
-    const existing = this.shadowRoot.querySelector("style.decorative");
-    if (this.hasAttribute("no-style")) {
-      existing?.remove();
-    } else if (!existing) {
-      const s = document.createElement("style");
-      s.className = "decorative";
-      s.textContent = DECORATIVE_STYLE;
-      this.shadowRoot.querySelector("style.functional")!.after(s);
-    }
   }
 
-  private updateExamplesVisibility(): void {
-    const p = this.shadowRoot?.querySelector<HTMLElement>(".examples-text");
-    if (p) p.hidden = this.hasAttribute("hide-examples");
+  // Mirrors document stylesheets into the shadow root so external classes
+  // (Tailwind, etc.) applied via classNames prop take effect inside shadow DOM.
+  private syncExternalStyles(): void {
+    if (!this.shadowRoot) return;
+
+    // Some frameworks inject styles via adoptedStyleSheets
+    try {
+      if (document.adoptedStyleSheets.length > 0) {
+        this.shadowRoot.adoptedStyleSheets = [...document.adoptedStyleSheets];
+      }
+    } catch {
+      // adoptedStyleSheets not supported — fall through to link/style mirroring
+    }
+
+    // Mirror <link rel="stylesheet"> from document head (production CSS files)
+    const existingLinks = new Set(
+      Array.from(this.shadowRoot.querySelectorAll<HTMLLinkElement>("link[data-ext]")).map(
+        (l) => l.href,
+      ),
+    );
+    document
+      .querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')
+      .forEach((link) => {
+        if (!existingLinks.has(link.href)) {
+          const clone = document.createElement("link");
+          clone.rel = "stylesheet";
+          clone.href = link.href;
+          clone.dataset.ext = "";
+          this.shadowRoot!.append(clone);
+        }
+      });
+
+    // Mirror <style> elements from document head (Vite dev mode: @tailwindcss/vite
+    // injects styles as <style> tags, not adoptedStyleSheets).
+    const srcStyles = Array.from(document.head.querySelectorAll<HTMLStyleElement>("style"));
+    const dstStyles = Array.from(
+      this.shadowRoot.querySelectorAll<HTMLStyleElement>("style[data-ext-style]"),
+    );
+
+    srcStyles.forEach((src, i) => {
+      const content = src.textContent ?? "";
+      if (dstStyles[i]) {
+        if (dstStyles[i].textContent !== content) {
+          dstStyles[i].textContent = content;
+        }
+      } else {
+        const clone = document.createElement("style");
+        clone.dataset.extStyle = "";
+        clone.textContent = content;
+        this.shadowRoot!.append(clone);
+      }
+    });
+
+    for (let i = srcStyles.length; i < dstStyles.length; i++) {
+      dstStyles[i].remove();
+    }
+
+    // Sync input's computed font + padding to ghost so ghost text aligns with
+    // typed text even when the consumer overrides font-size or padding on ::part(input).
+    requestAnimationFrame(() => {
+      const s = window.getComputedStyle(this.inputElement);
+      this.ghostElement.style.font = s.font;
+      const leftOffset = (parseFloat(s.borderLeftWidth) || 0) + (parseFloat(s.paddingLeft) || 0);
+      const rightOffset = (parseFloat(s.borderRightWidth) || 0) + (parseFloat(s.paddingRight) || 0);
+      this.ghostElement.style.paddingLeft = `${leftOffset}px`;
+      this.ghostElement.style.paddingRight = `${rightOffset}px`;
+    });
   }
 
   private updateHintVisibility(): void {
@@ -465,6 +506,12 @@ export class HotDateElement extends HTMLElement {
   private bindEvents(): void {
     this.inputElement.addEventListener("input", () => {
       this.rawInputValue = this.inputElement.value;
+      if (this.lastTabCompletedTo !== null) {
+        const normalized = normalizeInput(this.rawInputValue);
+        if (!normalized || !this.lastTabCompletedTo.startsWith(normalized)) {
+          this.lastTabCompletedTo = null;
+        }
+      }
       this.emit("raw-input-change", { rawInput: this.rawInputValue });
       this.parseAndRender();
     });
@@ -488,7 +535,13 @@ export class HotDateElement extends HTMLElement {
         this.isCaretAtInputEnd() &&
         this.hasCompletionTail()
       ) {
+        const suggestion = this.parseState.suggestions[this.activeSuggestionIndexValue];
+        if (suggestion && suggestion.insertText === this.lastTabCompletedTo) {
+          // User already accepted and removed this completion — let Tab move focus
+          return;
+        }
         if (this.acceptSuggestion()) {
+          this.lastTabCompletedTo = suggestion?.insertText ?? null;
           event.preventDefault();
         }
         return;
@@ -502,6 +555,24 @@ export class HotDateElement extends HTMLElement {
 
       if (event.key === "Escape") {
         this.activeSuggestionIndexValue = 0;
+        this.renderGhost();
+      }
+    });
+
+    this.inputElement.addEventListener("blur", () => {
+      this.lastTabCompletedTo = null;
+      if (this.committedValue) {
+        this.isDisplayMode = true;
+        this.inputElement.value = this.formatValue(this.committedValue);
+        this.ghostElement.hidden = true;
+      }
+    });
+
+    this.inputElement.addEventListener("focus", () => {
+      if (this.isDisplayMode) {
+        this.isDisplayMode = false;
+        this.inputElement.value = this.rawInputValue;
+        this.ghostElement.hidden = false;
         this.renderGhost();
       }
     });
@@ -595,6 +666,7 @@ export class HotDateElement extends HTMLElement {
   }
 
   private syncInputPresentation(): void {
+    if (this.isDisplayMode) return;
     if (this.inputElement.value !== this.rawInputValue) {
       this.inputElement.value = this.rawInputValue;
     }
@@ -628,7 +700,7 @@ export class HotDateElement extends HTMLElement {
       timezone:
         this.getAttribute("timezone") ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
       locale: this.getAttribute("locale") ?? navigator.language ?? "en-US",
-      weekStart: this.getAttribute("week-start") === "monday" ? "monday" : "sunday",
+      weekStart: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].includes(this.getAttribute("week-start") ?? '') ? this.getAttribute("week-start") as any : "monday",
       productRules: {
         allowPast: this.hasAttribute("allow-past"),
         defaultTime: { hour: 9, minute: 0 },
@@ -721,6 +793,31 @@ export class HotDateElement extends HTMLElement {
     }
 
     this.internals.setValidity({});
+  }
+
+  private formatSingleIso(isoDate: string, format: string): string {
+    const [year, month, day] = isoDate.split("-");
+    return format.replace(/YYYY|YY|MM|DD|M|D/gi, (token) => {
+      switch (token.toUpperCase()) {
+        case "YYYY": return year;
+        case "YY":   return year.slice(-2);
+        case "MM":   return month;
+        case "M":    return String(parseInt(month, 10));
+        case "DD":   return day;
+        case "D":    return String(parseInt(day, 10));
+        default:     return token;
+      }
+    });
+  }
+
+  private formatValue(canonical: string): string {
+    const format = this.getAttribute("format");
+    if (canonical.includes("/")) {
+      const [start, end] = canonical.split("/");
+      if (format) return `${this.formatSingleIso(start, format)} — ${this.formatSingleIso(end, format)}`;
+      return `${start} — ${end}`;
+    }
+    return format ? this.formatSingleIso(canonical, format) : (this.parseState.previewLabel ?? canonical);
   }
 
   private emit(name: string, detail: unknown): void {

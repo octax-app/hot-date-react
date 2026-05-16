@@ -426,7 +426,7 @@ function resolveBoundaryDate(
   reference: Date,
   unit: PeriodUnit,
   boundary: PeriodBoundary,
-  weekStart: "sunday" | "monday",
+  weekStart: ParseContext["weekStart"],
   timeZone: string,
 ): Date {
   if (unit === "week") {

@@ -6,7 +6,7 @@ export interface ParseContext {
   nowIso: string;
   timezone: string;
   locale: string;
-  weekStart: "sunday" | "monday";
+  weekStart: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
   productRules: {
     allowPast: boolean;
     defaultTime?: { hour: number; minute: number };
