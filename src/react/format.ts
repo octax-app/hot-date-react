@@ -1,14 +1,35 @@
-// Supported tokens: YYYY YY MM DD M D (case-insensitive)
-const TOKEN_RE = /YYYY|YY|MM|DD|yyyy|yy|mm|dd|M|D|m|d/g;
+// Supported tokens: YYYY YY MMMM MMM MM DD M D (case-insensitive)
+const TOKEN_RE = /YYYY|YY|MMMM|MMM|MM|DD|M|D/gi;
+
+function getMonthNames(locale: string, style: "short" | "long"): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleString(locale, { month: style })
+  );
+}
+
+function monthNameToNum(name: string, locale?: string): number | null {
+  const lower = name.toLowerCase();
+  if (locale) {
+    for (const style of ["short", "long"] as const) {
+      const idx = getMonthNames(locale, style).findIndex((m) => m.toLowerCase() === lower);
+      if (idx !== -1) return idx + 1;
+    }
+  }
+  const enShort = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  const enLong  = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const si = enShort.indexOf(lower);
+  if (si !== -1) return si + 1;
+  const li = enLong.indexOf(lower);
+  return li === -1 ? null : li + 1;
+}
 
 // Parse a formatted date string back to ISO (YYYY-MM-DD) using the format pattern.
 // Returns null if the string doesn't match the pattern.
-export function parseFormatToIso(formatted: string, format: string): string | null {
+export function parseFormatToIso(formatted: string, format: string, locale?: string): string | null {
   if (!formatted || !format) return null;
 
-  // Build a regex from the format string, capturing token groups in order
   const upper = format.toUpperCase();
-  const TOKENS = ["YYYY", "YY", "MM", "DD", "M", "D"] as const;
+  const TOKENS = ["YYYY", "YY", "MMMM", "MMM", "MM", "DD", "M", "D"] as const;
   const groupNames: string[] = [];
   let regexStr = "^";
   let i = 0;
@@ -17,10 +38,10 @@ export function parseFormatToIso(formatted: string, format: string): string | nu
     const token = TOKENS.find((t) => upper.startsWith(t, i));
     if (token) {
       groupNames.push(token);
-      regexStr +=
-        token === "YYYY" ? "(\\d{4})"
-        : token === "YY"   ? "(\\d{2})"
-        : "(\\d{1,2})";
+      if (token === "YYYY") regexStr += "(\\d{4})";
+      else if (token === "YY") regexStr += "(\\d{2})";
+      else if (token === "MMMM" || token === "MMM") regexStr += "([A-Za-zÀ-ɏ]+)";
+      else regexStr += "(\\d{1,2})";
       i += token.length;
     } else {
       regexStr += upper[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -38,24 +59,37 @@ export function parseFormatToIso(formatted: string, format: string): string | nu
   };
 
   const yearRaw = get("YYYY") ?? (get("YY") ? `20${get("YY")}` : null);
-  const monthRaw = get("MM") ?? get("M");
-  const dayRaw   = get("DD") ?? get("D");
 
-  if (!yearRaw || !monthRaw || !dayRaw) return null;
+  let monthNum: number | null = null;
+  const mmRaw = get("MM") ?? get("M");
+  if (mmRaw) {
+    monthNum = parseInt(mmRaw, 10);
+  } else {
+    const mmmRaw = get("MMMM") ?? get("MMM");
+    if (mmmRaw) monthNum = monthNameToNum(mmmRaw, locale);
+  }
 
-  return `${yearRaw}-${monthRaw.padStart(2, "0")}-${dayRaw.padStart(2, "0")}`;
+  const dayRaw = get("DD") ?? get("D");
+
+  if (!yearRaw || monthNum === null || !dayRaw) return null;
+
+  return `${yearRaw}-${String(monthNum).padStart(2, "0")}-${dayRaw.padStart(2, "0")}`;
 }
 
-function formatSingleDate(isoDate: string, format: string): string {
+function formatSingleDate(isoDate: string, format: string, locale?: string): string {
   const [year, month, day] = isoDate.split("-");
+  const monthNum = parseInt(month, 10);
+  const dayNum = parseInt(day, 10);
   return format.replace(TOKEN_RE, (token) => {
     switch (token.toUpperCase()) {
       case "YYYY": return year;
       case "YY":   return year.slice(-2);
+      case "MMMM": return new Date(parseInt(year, 10), monthNum - 1, dayNum).toLocaleString(locale ?? "en", { month: "long" });
+      case "MMM":  return new Date(parseInt(year, 10), monthNum - 1, dayNum).toLocaleString(locale ?? "en", { month: "short" });
       case "MM":   return month;
-      case "M":    return String(parseInt(month, 10));
+      case "M":    return String(monthNum);
       case "DD":   return day;
-      case "D":    return String(parseInt(day, 10));
+      case "D":    return String(dayNum);
       default:     return token;
     }
   });
@@ -69,7 +103,6 @@ const displayFormatter = new Intl.DateTimeFormat("en-US", {
 
 function formatDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
-  // Use UTC to avoid timezone shifting the date
   return displayFormatter.format(new Date(Date.UTC(year, month - 1, day)));
 }
 
@@ -85,14 +118,15 @@ export function formatDisplayValue(canonical: string | null): string {
 export function applyFormat(
   canonical: string | null,
   format?: string,
+  locale?: string,
 ): string | [string, string] {
   if (!canonical) return "";
 
   if (canonical.includes("/")) {
     const [start, end] = canonical.split("/");
     const fmt = format ?? "YYYY-MM-DD";
-    return [formatSingleDate(start, fmt), formatSingleDate(end, fmt)];
+    return [formatSingleDate(start, fmt, locale), formatSingleDate(end, fmt, locale)];
   }
 
-  return format ? formatSingleDate(canonical, format) : canonical;
+  return format ? formatSingleDate(canonical, format, locale) : canonical;
 }

@@ -215,11 +215,11 @@ export const HotDate = forwardRef<HotDateHandle, HotDateProps>(function HotDate(
   const toCanonicalIso = (v: string | [string, string] | null | undefined): string | null => {
     if (!v || (Array.isArray(v) && !v[0])) return null;
     if (Array.isArray(v)) {
-      const start = format ? (parseFormatToIso(v[0], format) ?? v[0]) : v[0];
-      const end   = format ? (parseFormatToIso(v[1], format) ?? v[1]) : v[1];
+      const start = format ? (parseFormatToIso(v[0], format, locale) ?? v[0]) : v[0];
+      const end   = format ? (parseFormatToIso(v[1], format, locale) ?? v[1]) : v[1];
       return `${start}/${end}`;
     }
-    return format ? (parseFormatToIso(v, format) ?? v) : v;
+    return format ? (parseFormatToIso(v, format, locale) ?? v) : v;
   };
 
   // One-time mount effect for uncontrolled defaultValue
@@ -260,12 +260,12 @@ export const HotDate = forwardRef<HotDateHandle, HotDateProps>(function HotDate(
     const handleChange = (e: Event) => {
       const detail = (e as CustomEvent<{ value: string | null }>).detail;
       setIsActive(!!detail.value);
-      onChange?.(applyFormat(detail.value, format));
+      onChange?.(applyFormat(detail.value, format, locale));
     };
 
     const handleCommit = (e: Event) => {
       const detail = (e as CustomEvent<{ value: string | null }>).detail;
-      onCommit?.(applyFormat(detail.value, format));
+      onCommit?.(applyFormat(detail.value, format, locale));
     };
 
     const handleClear = () => {
@@ -343,7 +343,7 @@ export const HotDate = forwardRef<HotDateHandle, HotDateProps>(function HotDate(
       shadowInput?.removeEventListener("keyup", handleKeyUp);
       shadowInput?.removeEventListener("paste", handlePaste);
     };
-  }, [onChange, onCommit, onClear, onError, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format]);
+  }, [onChange, onCommit, onClear, onError, onFocus, onBlur, onKeyDown, onKeyUp, onInput, onPaste, onClick, onMouseEnter, onMouseLeave, onMouseDown, onMouseUp, onMouseMove, format, locale]);
 
   useEffect(() => {
     const el = elRef.current;
