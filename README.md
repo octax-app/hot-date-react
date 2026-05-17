@@ -75,7 +75,7 @@ function MyForm() {
 />
 ```
 
-Tokens are case-insensitive: `YYYY`/`yyyy`, `MM`/`mm`, `DD`/`dd`, `YY`/`yy`, `M`/`m`, `D`/`d`.
+Tokens are case-insensitive: `YYYY`/`yyyy`, `MM`/`mm`, `DD`/`dd`, `YY`/`yy`, `M`/`m`, `D`/`d`, `MMM` (short month name e.g. `Jan`), `MMMM` (full month name e.g. `January`). Month name tokens respect the `locale` prop.
 
 For ranges, `onChange` returns `[formattedStart, formattedEnd]`.
 
@@ -299,7 +299,7 @@ console.log(ref.current?.value); // string | null
 | `onMouseDown` | `(e: MouseEvent) => void` | — | Fires on mousedown. |
 | `onMouseUp` | `(e: MouseEvent) => void` | — | Fires on mouseup. |
 | `onMouseMove` | `(e: MouseEvent) => void` | — | Fires on mousemove. |
-| `format` | `string` | `"YYYY-MM-DD"` | Output format. Tokens: `YYYY MM DD YY M D` (case-insensitive). |
+| `format` | `string` | `"YYYY-MM-DD"` | Output format. Tokens: `YYYY YY MM DD M D MMM MMMM` (case-insensitive). `MMM`/`MMMM` render locale-aware short/full month names. |
 | `dateType` | `"point" \| "range" \| "combined"` | `"point"` | `"point"` = single date only, `"range"` = range only, `"combined"` = both simultaneously (returns `string` or `[string, string]`). |
 | `startDate` | `Date \| string` | — | Minimum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. |
 | `endDate` | `Date \| string` | — | Maximum date. Accepts a JS `Date` or `"YYYY-MM-DD"` string. |
@@ -322,11 +322,11 @@ console.log(ref.current?.value); // string | null
 
 ## Output Format
 
-| `dateType` | `format` not set | `format="MM/DD/YYYY"` |
-| --- | --- | --- |
-| `"point"` | `"2026-06-13"` | `"06/13/2026"` |
-| `"range"` | `["2026-06-01", "2026-06-30"]` | `["06/01/2026", "06/30/2026"]` |
-| `"combined"` | `"2026-06-13"` or `["2026-06-01", "2026-06-30"]` | `"06/13/2026"` or `["06/01/2026", "06/30/2026"]` |
+| `dateType` | `format` not set | `format="MM/DD/YYYY"` | `format="MMM DD, YYYY"` |
+| --- | --- | --- | --- |
+| `"point"` | `"2026-06-13"` | `"06/13/2026"` | `"Jun 13, 2026"` |
+| `"range"` | `["2026-06-01", "2026-06-30"]` | `["06/01/2026", "06/30/2026"]` | `["Jun 01, 2026", "Jun 30, 2026"]` |
+| `"combined"` | `"2026-06-13"` or `["2026-06-01", "2026-06-30"]` | `"06/13/2026"` or `["06/01/2026", "06/30/2026"]` | `"Jun 13, 2026"` or `["Jun 01, 2026", "Jun 30, 2026"]` |
 
 Empty / no selection always returns `""` regardless of `dateType` or `format`.
 

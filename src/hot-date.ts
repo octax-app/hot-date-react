@@ -839,16 +839,20 @@ export class HotDateElement extends HTMLElement {
     this.internals.setValidity({});
   }
 
-  private formatSingleIso(isoDate: string, format: string): string {
+  private formatSingleIso(isoDate: string, format: string, locale?: string): string {
     const [year, month, day] = isoDate.split("-");
-    return format.replace(/YYYY|YY|MM|DD|M|D/gi, (token) => {
+    const monthNum = parseInt(month, 10);
+    const dayNum = parseInt(day, 10);
+    return format.replace(/YYYY|YY|MMMM|MMM|MM|DD|M|D/gi, (token) => {
       switch (token.toUpperCase()) {
         case "YYYY": return year;
         case "YY":   return year.slice(-2);
+        case "MMMM": return new Date(parseInt(year, 10), monthNum - 1, dayNum).toLocaleString(locale ?? "en", { month: "long" });
+        case "MMM":  return new Date(parseInt(year, 10), monthNum - 1, dayNum).toLocaleString(locale ?? "en", { month: "short" });
         case "MM":   return month;
-        case "M":    return String(parseInt(month, 10));
+        case "M":    return String(monthNum);
         case "DD":   return day;
-        case "D":    return String(parseInt(day, 10));
+        case "D":    return String(dayNum);
         default:     return token;
       }
     });
@@ -856,12 +860,13 @@ export class HotDateElement extends HTMLElement {
 
   private formatValue(canonical: string): string {
     const format = this.getAttribute("format");
+    const locale = this.getAttribute("locale") ?? navigator.language ?? "en";
     if (canonical.includes("/")) {
       const [start, end] = canonical.split("/");
-      if (format) return `${this.formatSingleIso(start, format)} — ${this.formatSingleIso(end, format)}`;
+      if (format) return `${this.formatSingleIso(start, format, locale)} — ${this.formatSingleIso(end, format, locale)}`;
       return `${start} — ${end}`;
     }
-    return format ? this.formatSingleIso(canonical, format) : (this.parseState.previewLabel ?? canonical);
+    return format ? this.formatSingleIso(canonical, format, locale) : (this.parseState.previewLabel ?? canonical);
   }
 
   private emit(name: string, detail: unknown): void {
